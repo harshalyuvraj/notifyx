@@ -3,9 +3,20 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { EmailModule } from './email/email.module';
 
 @Module({
-  imports: [PrismaModule, UsersModule],
+  imports: [
+    ScheduleModule.forRoot(),
+    PrismaModule,
+    UsersModule,
+    AuthModule,
+    NotificationsModule,
+    EmailModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
