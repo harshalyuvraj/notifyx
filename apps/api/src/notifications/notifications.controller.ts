@@ -41,7 +41,6 @@ export class NotificationsController {
     status: 401,
     description: 'Unauthorized.',
   })
-
   @Post()
   create(@Req() req: RequestWithUser, @Body() dto: CreateNotificationDto) {
     return this.notificationsService.create(req.user.userId, dto);
@@ -52,9 +51,9 @@ export class NotificationsController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Returns all notifications belonging to the authenticated user.',
+    description:
+      'Returns all notifications belonging to the authenticated user.',
   })
-
   @Get()
   findAll(@Req() req: RequestWithUser) {
     return this.notificationsService.findAll(req.user.userId);
@@ -71,7 +70,6 @@ export class NotificationsController {
     status: 404,
     description: 'Notification not found.',
   })
-
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.notificationsService.findOne(id);
@@ -84,7 +82,6 @@ export class NotificationsController {
     status: 200,
     description: 'Notification updated successfully.',
   })
-
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateNotificationDto) {
     return this.notificationsService.update(id, dto);
@@ -97,7 +94,6 @@ export class NotificationsController {
     status: 200,
     description: 'Notification deleted successfully.',
   })
-
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.notificationsService.remove(id);

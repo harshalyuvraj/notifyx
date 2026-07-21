@@ -2,18 +2,33 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
+import { QueueService } from '../queue/queue.service';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly queueService: QueueService,
+  ) {}
 
-  create(userId: string, dto: CreateNotificationDto) {
-    return this.prisma.notification.create({
+  async create(userId: string, dto: CreateNotificationDto) {
+    const notification = await this.prisma.notification.create({
       data: {
         ...dto,
         userId,
       },
     });
+
+    const delay = notification.scheduledAt
+      ? Math.max(
+          0,
+          new Date(notification.scheduledAt).getTime() - Date.now(),
+        )
+      : 0;
+
+    await this.queueService.addNotificationJob(notification.id, delay);
+
+    return notification;
   }
 
   findAll(userId: string) {

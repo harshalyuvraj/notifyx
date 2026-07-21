@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EmailModule } from './email/email.module';
+import { QueueModule } from './queue/queue.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { EmailModule } from './email/email.module';
     AuthModule,
     NotificationsModule,
     EmailModule,
+    QueueModule,
   ],
   controllers: [AppController],
   providers: [AppService],
