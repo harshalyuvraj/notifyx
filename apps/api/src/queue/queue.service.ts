@@ -13,9 +13,19 @@ export class QueueService {
     console.log('Adding BullMQ job', notificationId, delay);
 
     await this.notificationsQueue.add(
-        'send-notification',
-        { notificationId },
-        { delay },
+    'send-notification',
+    {
+        notificationId,
+    },
+    {
+        delay,
+        attempts: 3,
+        backoff: {
+        type: 'exponential',
+        delay: 5000,
+        },
+        removeOnComplete: 100,
+        removeOnFail: 100,
+    },
     );
-    }
 }
