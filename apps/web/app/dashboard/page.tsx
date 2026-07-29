@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 
 interface Notification {
@@ -20,8 +21,17 @@ export default function DashboardPage() {
   const [channel, setChannel] = useState("EMAIL");
   const [scheduledAt, setScheduledAt] = useState("");
   const [creating, setCreating] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
     async function loadNotifications() {
       try {
         const res = await api.get("/notifications");
@@ -35,7 +45,7 @@ export default function DashboardPage() {
 
     loadNotifications();
 
-  }, []);
+  }, [router]);
 
 
   async function createNotification(
@@ -70,6 +80,11 @@ export default function DashboardPage() {
     }
   }
 
+  function logout() {
+    localStorage.removeItem("token");
+    router.push("/login");
+  }
+
 
 
 
@@ -77,9 +92,18 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-slate-100 p-8">
       <div className="mx-auto max-w-5xl">
 
-        <h1 className="mb-8 text-4xl font-bold text-blue-600">
-          NotifyX Dashboard
-        </h1>
+        <div className="mb-8 flex items-center justify-between">
+          <h1 className="text-4xl font-bold text-blue-600">
+            NotifyX Dashboard
+          </h1>
+
+          <button
+            onClick={logout}
+            className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+          >
+            Logout
+          </button>
+        </div>
 
         <form
           onSubmit={createNotification}
