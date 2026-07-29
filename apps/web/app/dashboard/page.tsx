@@ -80,6 +80,28 @@ export default function DashboardPage() {
     }
   }
 
+
+  async function deleteNotification(id: string) {
+    const confirmed = window.confirm(
+      "Delete this notification?",
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/notifications/${id}`);
+
+      setNotifications((prev) =>
+        prev.filter((notification) => notification.id !== id),
+      );
+    } catch (err) {
+      console.error(err);
+      alert("Could not delete notification.");
+    }
+  }
+
+
+
   function logout() {
     localStorage.removeItem("token");
     router.push("/login");
@@ -174,6 +196,14 @@ export default function DashboardPage() {
                 <p className="mt-2">
                   {notification.message}
                 </p>
+
+
+                <button
+                  onClick={() => deleteNotification(notification.id)}
+                  className="mt-4 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+                >
+                  Delete
+                </button>
 
                 <div className="mt-4 text-sm text-gray-500">
                   <p>Channel: {notification.channel}</p>
