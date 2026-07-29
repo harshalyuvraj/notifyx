@@ -11,10 +11,10 @@ export class NotificationsProcessor extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
-    ) {
+  ) {
     super();
     this.logger.log('NotificationsProcessor initialized');
-    }
+  }
 
   async process(job: Job) {
     this.logger.log(`Processing job ${job.name}`);

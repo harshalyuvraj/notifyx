@@ -1,98 +1,286 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 🚀 NotifyX
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+# 🚀 NotifyX
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+![NestJS](https://img.shields.io/badge/NestJS-v11-red)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
+![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-blue)
+![Redis](https://img.shields.io/badge/Redis-Queue-red)
+![BullMQ](https://img.shields.io/badge/BullMQ-Background%20Jobs-green)
 
-## Description
+A scalable notification backend built with **NestJS**, **Prisma**, **PostgreSQL**, **Redis**, **BullMQ**, and **Nodemailer**.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+NotifyX provides secure user authentication, notification management, asynchronous background processing, scheduled email delivery, and interactive API documentation.
 
-## Project setup
+---
 
-```bash
-$ pnpm install
+## ✨ Features
+
+- 🔐 JWT Authentication
+- 👤 User Registration & Login
+- 📧 Email Notifications
+- ⏰ Scheduled Notifications
+- ⚡ Background Job Processing using BullMQ
+- 🗄 PostgreSQL Database
+- 🔄 Prisma ORM
+- 📄 Swagger API Documentation
+- 🐳 Dockerized PostgreSQL & Redis
+- ✅ DTO Validation using class-validator
+
+---
+
+## 🛠 Tech Stack
+
+| Technology | Purpose                   |
+| ---------- | ------------------------- |
+| NestJS     | Backend Framework         |
+| TypeScript | Programming Language      |
+| PostgreSQL | Database                  |
+| Prisma     | ORM                       |
+| Redis      | Queue Backend             |
+| BullMQ     | Background Job Processing |
+| Nodemailer | Email Service             |
+| JWT        | Authentication            |
+| Swagger    | API Documentation         |
+| Docker     | Containerization          |
+
+---
+
+## 🏗 Architecture
+
 ```
 
-## Compile and run the project
+                 Client
+                    │
+                    ▼
+            NestJS REST API
+                    │
+        ┌───────────┴────────────┐
+        ▼                        ▼
+ PostgreSQL                 BullMQ Queue
+    Prisma                     Redis
+        ▲                        │
+        │                        ▼
+        └──────── Worker ─────────┘
+                    │
+                    ▼
+               Gmail SMTP
+                    │
+                    ▼
+                User Inbox
 
-```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
 ```
 
-## Run tests
+---
 
-```bash
-# unit tests
-$ pnpm run test
+## 📂 Project Structure
 
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
 ```
 
-## Deployment
+apps/
+└── api/
+├── prisma/
+├── src/
+│ ├── auth/
+│ ├── email/
+│ ├── notifications/
+│ ├── prisma/
+│ ├── queue/
+│ └── users/
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## ⚙️ Environment Variables
 
-Check out a few resources that may come in handy when working with NestJS:
+Create a `.env` file inside `apps/api`.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```env
+DATABASE_URL=postgresql://postgres:password@localhost:5432/notifyx
 
-## Support
+JWT_SECRET=your-secret-key
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_app_password
 
-## Stay in touch
+REDIS_HOST=localhost
+REDIS_PORT=6379
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+## 🚀 Installation
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Clone the repository
+
+```bash
+git clone https://github.com/harshalyuvraj/notifyx.git
+```
+
+```bash
+cd notifyx
+```
+
+Install dependencies
+
+```bash
+pnpm install
+```
+
+---
+
+## 🐳 Start PostgreSQL
+
+```bash
+docker run -d \
+--name notifyx-postgres \
+-p 5432:5432 \
+-e POSTGRES_PASSWORD=password \
+postgres:16
+```
+
+---
+
+## 🐳 Start Redis
+
+```bash
+docker run -d \
+--name notifyx-redis \
+-p 6379:6379 \
+redis:7
+```
+
+---
+
+## 🗄 Database Migration
+
+```bash
+pnpm --filter api prisma migrate dev
+```
+
+---
+
+## ▶️ Run the Application
+
+```bash
+pnpm --filter api start:dev
+```
+
+---
+
+## 📖 Swagger Documentation
+
+```
+http://localhost:3000/api
+```
+
+---
+
+## 🔑 Authentication Flow
+
+1. Register a user
+
+```
+POST /auth/register
+```
+
+2. Login
+
+```
+POST /auth/login
+```
+
+3. Copy the JWT token
+
+4. Click **Authorize** in Swagger
+
+5. Paste
+
+```
+Bearer <your_token>
+```
+
+6. Access protected endpoints
+
+---
+
+## 📬 Notification Flow
+
+1. User creates notification
+
+2. Notification saved in PostgreSQL
+
+3. BullMQ creates background job
+
+4. Redis stores the job
+
+5. Worker processes the job
+
+6. Email sent via Gmail SMTP
+
+7. Notification marked as SENT
+
+---
+
+## 📌 API Endpoints
+
+### Authentication
+
+```
+POST /auth/register
+POST /auth/login
+GET  /auth/profile
+```
+
+### Users
+
+```
+POST   /users
+GET    /users
+GET    /users/:id
+PATCH  /users/:id
+DELETE /users/:id
+```
+
+### Notifications
+
+```
+POST   /notifications
+GET    /notifications
+GET    /notifications/:id
+PATCH  /notifications/:id
+DELETE /notifications/:id
+```
+
+---
+
+## 📸 Screenshots
+
+- Swagger UI
+- Successful email delivery
+- BullMQ processing logs
+
+---
+
+## 🔮 Future Improvements
+
+- SMS Notifications
+- Push Notifications
+- Retry Policies
+- Failed Job Handling
+- Bull Board Dashboard
+- Docker Compose
+- CI/CD Pipeline
+- Kubernetes Deployment
+
+---
+
+## 👨‍💻 Author
+
+Harshal Yuvraj
+
+GitHub:
+
+https://github.com/harshalyuvraj

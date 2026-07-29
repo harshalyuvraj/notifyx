@@ -20,10 +20,7 @@ export class NotificationsService {
     });
 
     const delay = notification.scheduledAt
-      ? Math.max(
-          0,
-          new Date(notification.scheduledAt).getTime() - Date.now(),
-        )
+      ? Math.max(0, new Date(notification.scheduledAt).getTime() - Date.now())
       : 0;
 
     await this.queueService.addNotificationJob(notification.id, delay);

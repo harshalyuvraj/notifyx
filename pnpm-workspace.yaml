@@ -8,4 +8,5 @@ allowBuilds:
   bcrypt: true
   msgpackr-extract: true
   prisma: true
+  sharp: true
   unrs-resolver: true
