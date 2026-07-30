@@ -18,6 +18,7 @@ export class QueueService {
         notificationId,
       },
       {
+        jobId: notificationId,
         delay,
         attempts: 3,
         backoff: {
@@ -28,5 +29,13 @@ export class QueueService {
         removeOnFail: 100,
       },
     );
+  }
+
+  async removeNotificationJob(notificationId: string) {
+    const job = await this.notificationsQueue.getJob(notificationId);
+
+    if (job) {
+      await job.remove();
+    }
   }
 }

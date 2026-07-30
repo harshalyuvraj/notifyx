@@ -22,6 +22,7 @@ export default function DashboardPage() {
   const [scheduledAt, setScheduledAt] = useState("");
   const [creating, setCreating] = useState(false);
   const router = useRouter();
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
 
@@ -53,25 +54,71 @@ export default function DashboardPage() {
   ) {
     e.preventDefault();
 
+    const selectedDate = new Date(scheduledAt);
+
+    if (isNaN(selectedDate.getTime())) {
+      alert("Please enter a valid date and time.");
+      return;
+    }
+
+    const year = selectedDate.getFullYear();
+
+    if (year < 2000 || year > 9999) {
+      alert("Please enter a valid year.");
+      return;
+    }
+
     setCreating(true);
 
     try {
-      const res = await api.post("/notifications", {
-        title,
-        message,
-        channel,
-        scheduledAt: new Date(scheduledAt).toISOString(),
-      });
 
-      setNotifications((prev) => [
-        res.data,
-        ...prev,
-      ]);
+      const selectedDate = new Date(scheduledAt);
+
+      if (selectedDate <= new Date()) {
+        alert("Scheduled time must be in the future.");
+        return;
+      }
+
+
+      let res;
+
+      if (editingId) {
+        res = await api.patch(`/notifications/${editingId}`, {
+          title,
+          message,
+          channel,
+          scheduledAt: new Date(scheduledAt).toISOString(),
+        });
+      } else {
+
+        res = await api.post("/notifications", {
+          title,
+          message,
+          channel,
+          scheduledAt: new Date(scheduledAt).toISOString(),
+        });
+      }
+
+      if (editingId) {
+        setNotifications((prev) =>
+          prev.map((notification) =>
+            notification.id === editingId
+              ? res.data
+              : notification,
+          ),
+        );
+      } else {
+        setNotifications((prev) => [
+          res.data,
+          ...prev,
+        ]);
+      }
 
       setTitle("");
       setMessage("");
       setChannel("EMAIL");
       setScheduledAt("");
+      setEditingId(null);
     } catch (err) {
       console.error(err);
       alert("Could not create notification.");
@@ -98,6 +145,24 @@ export default function DashboardPage() {
       console.error(err);
       alert("Could not delete notification.");
     }
+  }
+
+  function editNotification(notification: Notification) {
+    setEditingId(notification.id);
+
+    setTitle(notification.title);
+    setMessage(notification.message);
+    setChannel(notification.channel);
+
+    const date = new Date(notification.scheduledAt);
+
+    const localDate = new Date(
+      date.getTime() - date.getTimezoneOffset() * 60000,
+    )
+      .toISOString()
+      .slice(0, 16);
+
+    setScheduledAt(localDate);
   }
 
 
@@ -172,9 +237,32 @@ export default function DashboardPage() {
             className="rounded bg-blue-600 px-5 py-3 text-white"
           >
             {creating
-              ? "Creating..."
-              : "Create Notification"}
+              ? editingId
+                ? "Updating..."
+                : "Creating..."
+              : editingId
+                ? "Update Notification"
+                : "Create Notification"}
           </button>
+
+
+          {editingId && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingId(null);
+                setTitle("");
+                setMessage("");
+                setChannel("EMAIL");
+                setScheduledAt("");
+              }}
+              className="ml-3 rounded bg-gray-500 px-5 py-3 text-white hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+          )}
+
+
         </form>
 
 
@@ -196,6 +284,15 @@ export default function DashboardPage() {
                 <p className="mt-2">
                   {notification.message}
                 </p>
+
+
+                <button
+                  onClick={() => editNotification(notification)}
+                  className="mr-3 rounded bg-yellow-500 px-4 py-2 text-white hover:bg-yellow-600"
+                >
+                  Edit
+                </button>
+
 
 
                 <button
