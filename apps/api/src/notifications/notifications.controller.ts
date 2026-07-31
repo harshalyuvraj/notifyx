@@ -54,6 +54,10 @@ export class NotificationsController {
     description:
       'Returns all notifications belonging to the authenticated user.',
   })
+  @Get('stats')
+  getStats(@Req() req) {
+    return this.notificationsService.getStats(req.user.userId);
+  }
   @Get()
   findAll(@Req() req: RequestWithUser) {
     return this.notificationsService.findAll(req.user.userId);

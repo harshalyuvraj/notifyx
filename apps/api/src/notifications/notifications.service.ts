@@ -93,4 +93,49 @@ export class NotificationsService {
       },
     });
   }
+
+  async getStats(userId: string) {
+    const total = await this.prisma.notification.count({
+      where: {
+        userId,
+      },
+    });
+
+    const grouped = await this.prisma.notification.groupBy({
+      by: ['status'],
+      where: {
+        userId,
+      },
+      _count: {
+        status: true,
+      },
+    });
+
+    let pending = 0;
+    let sent = 0;
+    let failed = 0;
+
+    grouped.forEach((item) => {
+      switch (item.status) {
+        case 'PENDING':
+          pending = item._count.status;
+          break;
+
+        case 'SENT':
+          sent = item._count.status;
+          break;
+
+        case 'FAILED':
+          failed = item._count.status;
+          break;
+      }
+    });
+
+    return {
+      total,
+      pending,
+      sent,
+      failed,
+    };
+  }
 }

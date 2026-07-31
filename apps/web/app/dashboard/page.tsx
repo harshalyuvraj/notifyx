@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import toast from "react-hot-toast";
 
 interface Notification {
   id: string;
@@ -23,9 +24,32 @@ export default function DashboardPage() {
   const [creating, setCreating] = useState(false);
   const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    sent: 0,
+    failed: 0,
+  });
+
+
+  async function loadNotifications() {
+    setLoading(true);
+
+    try {
+      const res = await api.get("/notifications");
+      setNotifications(res.data);
+
+      const statsRes = await api.get("/notifications/stats");
+      setStats(statsRes.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
 
   useEffect(() => {
-
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -33,19 +57,11 @@ export default function DashboardPage() {
       return;
     }
 
-    async function loadNotifications() {
-      try {
-        const res = await api.get("/notifications");
-        setNotifications(res.data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+    async function initializeDashboard() {
+      await loadNotifications();
     }
 
-    loadNotifications();
-
+    initializeDashboard();
   }, [router]);
 
 
@@ -57,14 +73,14 @@ export default function DashboardPage() {
     const selectedDate = new Date(scheduledAt);
 
     if (isNaN(selectedDate.getTime())) {
-      alert("Please enter a valid date and time.");
+      toast.error("Please enter a valid date and time.");
       return;
     }
 
     const year = selectedDate.getFullYear();
 
     if (year < 2000 || year > 9999) {
-      alert("Please enter a valid year.");
+      toast.error("Please enter a valid year.");
       return;
     }
 
@@ -75,7 +91,7 @@ export default function DashboardPage() {
       const selectedDate = new Date(scheduledAt);
 
       if (selectedDate <= new Date()) {
-        alert("Scheduled time must be in the future.");
+        toast.error("Scheduled time must be in the future.");
         return;
       }
 
@@ -99,19 +115,12 @@ export default function DashboardPage() {
         });
       }
 
+      await loadNotifications();
+
       if (editingId) {
-        setNotifications((prev) =>
-          prev.map((notification) =>
-            notification.id === editingId
-              ? res.data
-              : notification,
-          ),
-        );
+        toast.success("Notification updated successfully!");
       } else {
-        setNotifications((prev) => [
-          res.data,
-          ...prev,
-        ]);
+        toast.success("Notification created successfully!");
       }
 
       setTitle("");
@@ -121,7 +130,7 @@ export default function DashboardPage() {
       setEditingId(null);
     } catch (err) {
       console.error(err);
-      alert("Could not create notification.");
+      toast.error("Could not save notification.");
     } finally {
       setCreating(false);
     }
@@ -138,12 +147,11 @@ export default function DashboardPage() {
     try {
       await api.delete(`/notifications/${id}`);
 
-      setNotifications((prev) =>
-        prev.filter((notification) => notification.id !== id),
-      );
+      await loadNotifications();
+      toast.success("Notification deleted successfully!");
     } catch (err) {
       console.error(err);
-      alert("Could not delete notification.");
+      toast.error("Could not delete notification.");
     }
   }
 
@@ -176,11 +184,12 @@ export default function DashboardPage() {
 
 
   return (
-    <main className="min-h-screen bg-slate-100 p-8">
+    <main className="min-h-screen bg-slate-200 p-8">
       <div className="mx-auto max-w-5xl">
 
         <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-4xl font-bold text-blue-600">
+
+          <h1 className="text-5xl font-extrabold text-blue-600">
             NotifyX Dashboard
           </h1>
 
@@ -190,6 +199,37 @@ export default function DashboardPage() {
           >
             Logout
           </button>
+        </div>
+
+
+        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="rounded-lg bg-white p-5 shadow transition duration-300 hover:-translate-y-1 hover:shadow-lg">
+            <p className="text-sm font-medium uppercase tracking-wide text-gray-500">Total</p>
+            <h2 className="mt-2 text-3xl font-bold text-blue-600">
+              {stats.total}
+            </h2>
+          </div>
+
+          <div className="rounded-lg bg-white p-5 shadow transition duration-300 hover:-translate-y-1 hover:shadow-lg">
+            <p className="text-sm font-medium uppercase tracking-wide text-gray-500">Pending</p>
+            <h2 className="mt-2 text-3xl font-bold text-yellow-500">
+              {stats.pending}
+            </h2>
+          </div>
+
+          <div className="rounded-lg bg-white p-5 shadow transition duration-300 hover:-translate-y-1 hover:shadow-lg">
+            <p className="text-sm font-medium uppercase tracking-wide text-gray-500">Sent</p>
+            <h2 className="mt-2 text-3xl font-bold text-green-600">
+              {stats.sent}
+            </h2>
+          </div>
+
+          <div className="rounded-lg bg-white p-5 shadow transition duration-300 hover:-translate-y-1 hover:shadow-lg">
+            <p className="text-sm font-medium uppercase tracking-wide text-gray-500">Failed</p>
+            <h2 className="mt-2 text-3xl font-bold text-red-600">
+              {stats.failed}
+            </h2>
+          </div>
         </div>
 
         <form
@@ -271,46 +311,63 @@ export default function DashboardPage() {
         ) : notifications.length === 0 ? (
           <p>No notifications found.</p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {notifications.map((notification) => (
               <div
                 key={notification.id}
-                className="rounded-lg bg-white p-5 shadow"
+                className="rounded-xl bg-white p-6 shadow transition duration-300 hover:-translate-y-1 hover:shadow-lg"
               >
-                <h2 className="text-xl font-semibold">
+                <div className="mb-4 flex items-center justify-between">
+                  <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">
+                    📧 {notification.channel}
+                  </span>
+
+                  <span
+                    className={`rounded-full px-3 py-1 text-sm font-semibold ${
+                      notification.status === "SENT"
+                        ? "bg-green-100 text-green-700"
+                        : notification.status === "PENDING"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {notification.status}
+                  </span>
+                </div>
+
+                <h2 className="text-2xl font-bold">
                   {notification.title}
                 </h2>
 
-                <p className="mt-2">
+                <p className="mt-2 text-gray-600">
                   {notification.message}
                 </p>
 
+                <div className="mt-5 flex gap-3">
+                  <button
+                    onClick={() => editNotification(notification)}
+                    className="rounded bg-yellow-500 px-4 py-2 text-white transition hover:bg-yellow-600"
+                  >
+                    ✏️ Edit
+                  </button>
 
-                <button
-                  onClick={() => editNotification(notification)}
-                  className="mr-3 rounded bg-yellow-500 px-4 py-2 text-white hover:bg-yellow-600"
-                >
-                  Edit
-                </button>
+                  <button
+                    onClick={() => deleteNotification(notification.id)}
+                    className="rounded bg-red-600 px-4 py-2 text-white transition hover:bg-red-700"
+                  >
+                    🗑 Delete
+                  </button>
+                </div>
 
-
-
-                <button
-                  onClick={() => deleteNotification(notification.id)}
-                  className="mt-4 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
-                >
-                  Delete
-                </button>
-
-                <div className="mt-4 text-sm text-gray-500">
-                  <p>Channel: {notification.channel}</p>
-                  <p>Status: {notification.status}</p>
+                <div className="mt-5 border-t pt-4 text-sm text-gray-500">
                   <p>
-                    Scheduled:
-                    {" "}
-                    {new Date(
-                      notification.scheduledAt,
-                    ).toLocaleString()}
+                    📅{" "}
+                    {new Date(notification.scheduledAt).toLocaleDateString()}
+                  </p>
+
+                  <p>
+                    🕒{" "}
+                    {new Date(notification.scheduledAt).toLocaleTimeString()}
                   </p>
                 </div>
               </div>
