@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
+import { io } from "socket.io-client";
 
 interface Notification {
   id: string;
@@ -30,14 +31,23 @@ export default function DashboardPage() {
     sent: 0,
     failed: 0,
   });
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
 
   async function loadNotifications() {
     setLoading(true);
 
     try {
-      const res = await api.get("/notifications");
-      setNotifications(res.data);
+      const res = await api.get(
+        `/notifications?page=${page}&limit=5&search=${encodeURIComponent(search)}`,
+      );
+
+      setNotifications(res.data.notifications);
+
+      setTotalPages(res.data.totalPages);
 
       const statsRes = await api.get("/notifications/stats");
       setStats(statsRes.data);
@@ -57,12 +67,20 @@ export default function DashboardPage() {
       return;
     }
 
-    async function initializeDashboard() {
-      await loadNotifications();
-    }
+    loadNotifications();
+  }, [router, page, search]);
 
-    initializeDashboard();
-  }, [router]);
+  useEffect(() => {
+    const socket = io("http://localhost:3001");
+
+    socket.on("notificationUpdated", async () => {
+      await loadNotifications();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
 
   async function createNotification(
@@ -79,7 +97,7 @@ export default function DashboardPage() {
 
     const year = selectedDate.getFullYear();
 
-    if (year < 2000 || year > 9999) {
+    if (year < 2026 || year > 9999) {
       toast.error("Please enter a valid year.");
       return;
     }
@@ -88,18 +106,13 @@ export default function DashboardPage() {
 
     try {
 
-      const selectedDate = new Date(scheduledAt);
-
       if (selectedDate <= new Date()) {
         toast.error("Scheduled time must be in the future.");
         return;
       }
 
-
-      let res;
-
       if (editingId) {
-        res = await api.patch(`/notifications/${editingId}`, {
+        await api.patch(`/notifications/${editingId}`, {
           title,
           message,
           channel,
@@ -107,7 +120,7 @@ export default function DashboardPage() {
         });
       } else {
 
-        res = await api.post("/notifications", {
+        await api.post("/notifications", {
           title,
           message,
           channel,
@@ -180,7 +193,19 @@ export default function DashboardPage() {
     router.push("/login");
   }
 
+  const filteredNotifications = notifications.filter((notification) => {
+    const query = search.toLowerCase();
 
+    const matchesSearch =
+      notification.title.toLowerCase().includes(query) ||
+      notification.message.toLowerCase().includes(query);
+
+    const matchesStatus =
+      statusFilter === "ALL" ||
+      notification.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
 
 
   return (
@@ -305,14 +330,95 @@ export default function DashboardPage() {
 
         </form>
 
+        <div className="mb-6">
+          <h2 className="mb-2 text-2xl font-semibold">
+            Search Notifications
+          </h2>
+
+          <input
+            type="text"
+            placeholder="Search by title or message..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            className="w-full rounded-lg border border-gray-300 bg-white p-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div className="mb-6 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter("ALL");
+              setPage(1);
+            }}
+            className={`rounded-full px-4 py-2 font-medium transition ${
+              statusFilter === "ALL"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-200 hover:bg-gray-300"
+            }`}
+          >
+            All ({stats.total})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter("PENDING");
+              setPage(1);
+            }}
+            className={`rounded-full px-4 py-2 font-medium transition ${
+              statusFilter === "PENDING"
+                ? "bg-yellow-500 text-white"
+                : "bg-gray-200 hover:bg-gray-300"
+            }`}
+          >
+            Pending ({stats.pending})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter("SENT");
+              setPage(1);
+            }}
+            className={`rounded-full px-4 py-2 font-medium transition ${
+              statusFilter === "SENT"
+                ? "bg-green-600 text-white"
+                : "bg-gray-200 hover:bg-gray-300"
+            }`}
+          >
+            Sent ({stats.sent})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter("FAILED");
+              setPage(1);
+            }}
+            className={`rounded-full px-4 py-2 font-medium transition ${
+              statusFilter === "FAILED"
+                ? "bg-red-600 text-white"
+                : "bg-gray-200 hover:bg-gray-300"
+            }`}
+          >
+            Failed ({stats.failed})
+          </button>
+        </div>
+
 
         {loading ? (
           <p>Loading notifications...</p>
-        ) : notifications.length === 0 ? (
-          <p>No notifications found.</p>
+        ) : filteredNotifications.length === 0 ? (
+          <p className="rounded-lg bg-white p-6 text-center text-gray-500 shadow">
+            No notifications match your search.
+          </p>
         ) : (
           <div className="space-y-6">
-            {notifications.map((notification) => (
+            {filteredNotifications.map((notification) => (
               <div
                 key={notification.id}
                 className="rounded-xl bg-white p-6 shadow transition duration-300 hover:-translate-y-1 hover:shadow-lg"
@@ -374,6 +480,30 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
+
+        {totalPages > 1 && (
+          <div className="mt-8 flex items-center justify-center gap-4">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="rounded bg-gray-600 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Previous
+            </button>
+
+            <span className="rounded-lg bg-white px-4 py-2 shadow">
+              Page {page} of {totalPages}
+            </span>
+
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="rounded bg-blue-600 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        )}  
 
       </div>
     </main>

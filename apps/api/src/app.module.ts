@@ -5,13 +5,11 @@ import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { NotificationsModule } from './notifications/notifications.module';
-import { ScheduleModule } from '@nestjs/schedule';
 import { EmailModule } from './email/email.module';
 import { QueueModule } from './queue/queue.module';
 
 @Module({
   imports: [
-    ScheduleModule.forRoot(),
     PrismaModule,
     UsersModule,
     AuthModule,

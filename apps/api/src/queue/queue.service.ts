@@ -10,8 +10,6 @@ export class QueueService {
   ) {}
 
   async addNotificationJob(notificationId: string, delay: number) {
-    console.log('Adding BullMQ job', notificationId, delay);
-
     await this.notificationsQueue.add(
       'send-notification',
       {
@@ -35,7 +33,11 @@ export class QueueService {
     const job = await this.notificationsQueue.getJob(notificationId);
 
     if (job) {
-      await job.remove();
+      try {
+        await job.remove();
+      } catch {
+        // ignore
+      }
     }
   }
 }

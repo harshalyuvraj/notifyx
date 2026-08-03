@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { QueueService } from './queue.service';
 import { NotificationsProcessor } from './notifications.processor';
 import { EmailModule } from '../email/email.module';
+import { GatewayModule } from '../gateway/gateway.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { EmailModule } from '../email/email.module';
     }),
 
     EmailModule,
+    GatewayModule,
   ],
 
   providers: [QueueService, NotificationsProcessor],

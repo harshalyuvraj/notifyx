@@ -4,9 +4,10 @@ import { NotificationsService } from './notifications.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
 import { QueueModule } from '../queue/queue.module';
+import { GatewayModule } from '../gateway/gateway.module';
 
 @Module({
-  imports: [PrismaModule, EmailModule, QueueModule],
+  imports: [PrismaModule, EmailModule, QueueModule, GatewayModule],
   controllers: [NotificationsController],
   providers: [NotificationsService],
 })

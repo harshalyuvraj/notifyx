@@ -1,18 +1,19 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
-import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth/jwt-auth.guard';
-import { Req } from '@nestjs/common';
 import type { RequestWithUser } from '../auth/request-with-user';
 import {
   ApiBearerAuth,
@@ -55,12 +56,30 @@ export class NotificationsController {
       'Returns all notifications belonging to the authenticated user.',
   })
   @Get('stats')
-  getStats(@Req() req) {
+  getStats(@Req() req: RequestWithUser) {
     return this.notificationsService.getStats(req.user.userId);
   }
+
+  @ApiOperation({
+    summary: 'Get paginated notifications',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns paginated notifications for the authenticated user.',
+  })
   @Get()
-  findAll(@Req() req: RequestWithUser) {
-    return this.notificationsService.findAll(req.user.userId);
+  findAll(
+    @Req() req: RequestWithUser,
+    @Query('page') page = 1,
+    @Query('limit') limit = 5,
+    @Query('search') search = '',
+  ) {
+    return this.notificationsService.findAll(
+      req.user.userId,
+      Number(page),
+      Number(limit),
+      search,
+    );
   }
 
   @ApiOperation({
@@ -75,8 +94,8 @@ export class NotificationsController {
     description: 'Notification not found.',
   })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.notificationsService.findOne(id);
+  findOne(@Req() req: RequestWithUser, @Param('id') id: string) {
+    return this.notificationsService.findOne(req.user.userId, id);
   }
 
   @ApiOperation({
@@ -87,8 +106,12 @@ export class NotificationsController {
     description: 'Notification updated successfully.',
   })
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateNotificationDto) {
-    return this.notificationsService.update(id, dto);
+  update(
+    @Req() req: RequestWithUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateNotificationDto,
+  ) {
+    return this.notificationsService.update(req.user.userId, id, dto);
   }
 
   @ApiOperation({
@@ -99,7 +122,7 @@ export class NotificationsController {
     description: 'Notification deleted successfully.',
   })
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.notificationsService.remove(id);
+  remove(@Req() req: RequestWithUser, @Param('id') id: string) {
+    return this.notificationsService.remove(req.user.userId, id);
   }
 }

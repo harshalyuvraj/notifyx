@@ -1,14 +1,20 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { QueueService } from '../queue/queue.service';
+import { NotificationsGateway } from '../gateway/notifications.gateway';
 
 @Injectable()
 export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly queueService: QueueService,
+    private readonly notificationsGateway: NotificationsGateway,
   ) {}
 
   async create(userId: string, dto: CreateNotificationDto) {
@@ -19,7 +25,7 @@ export class NotificationsService {
     if (dto.scheduledAt) {
       const year = new Date(dto.scheduledAt).getUTCFullYear();
 
-      if (year < 2000 || year > 9999) {
+      if (year < 2026 || year > 9999) {
         throw new BadRequestException('Invalid year.');
       }
     }
@@ -36,36 +42,88 @@ export class NotificationsService {
       : 0;
 
     await this.queueService.addNotificationJob(notification.id, delay);
+    this.notificationsGateway.emitNotificationUpdated();
 
     return notification;
   }
 
-  findAll(userId: string) {
-    return this.prisma.notification.findMany({
-      where: {
-        userId,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+  async findAll(userId: string, page = 1, limit = 5, search = '') {
+    const skip = (page - 1) * limit;
+
+    const where = {
+      userId,
+      ...(search && {
+        OR: [
+          {
+            title: {
+              contains: search,
+              mode: 'insensitive' as const,
+            },
+          },
+          {
+            message: {
+              contains: search,
+              mode: 'insensitive' as const,
+            },
+          },
+        ],
+      }),
+    };
+
+    const [notifications, total] = await Promise.all([
+      this.prisma.notification.findMany({
+        where,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+
+      this.prisma.notification.count({
+        where,
+      }),
+    ]);
+
+    return {
+      notifications,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
-  findOne(id: string) {
-    return this.prisma.notification.findUnique({
+  async findOne(userId: string, id: string) {
+    return this.prisma.notification.findFirst({
       where: {
         id,
+        userId,
       },
     });
   }
 
-  async update(id: string, dto: UpdateNotificationDto) {
+  async update(userId: string, id: string, dto: UpdateNotificationDto) {
+    if (dto.scheduledAt && new Date(dto.scheduledAt) <= new Date()) {
+      throw new BadRequestException('Scheduled time must be in the future.');
+    }
+
     if (dto.scheduledAt) {
       const year = new Date(dto.scheduledAt).getUTCFullYear();
 
-      if (year < 2000 || year > 9999) {
+      if (year < 2026 || year > 9999) {
         throw new BadRequestException('Invalid year.');
       }
+    }
+
+    const existing = await this.prisma.notification.findFirst({
+      where: {
+        id,
+        userId,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Notification not found.');
     }
 
     const notification = await this.prisma.notification.update({
@@ -83,15 +141,33 @@ export class NotificationsService {
 
     await this.queueService.addNotificationJob(id, delay);
 
+    this.notificationsGateway.emitNotificationUpdated();
+
     return notification;
   }
 
-  remove(id: string) {
-    return this.prisma.notification.delete({
+  async remove(userId: string, id: string) {
+    const existing = await this.prisma.notification.findFirst({
+      where: {
+        id,
+        userId,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Notification not found.');
+    }
+
+    await this.queueService.removeNotificationJob(id);
+    const notification = await this.prisma.notification.delete({
       where: {
         id,
       },
     });
+
+    this.notificationsGateway.emitNotificationUpdated();
+
+    return notification;
   }
 
   async getStats(userId: string) {

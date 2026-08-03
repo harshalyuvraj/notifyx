@@ -3,6 +3,7 @@ import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { NotificationsGateway } from '../gateway/notifications.gateway';
 
 @Processor('notifications')
 export class NotificationsProcessor extends WorkerHost {
@@ -11,6 +12,7 @@ export class NotificationsProcessor extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
+    private readonly notificationsGateway: NotificationsGateway,
   ) {
     super();
     this.logger.log('NotificationsProcessor initialized');
@@ -49,6 +51,8 @@ export class NotificationsProcessor extends WorkerHost {
         status: 'SENT',
       },
     });
+
+    this.notificationsGateway.emitNotificationUpdated();
 
     this.logger.log(`Notification ${notification.id} sent successfully`);
   }
