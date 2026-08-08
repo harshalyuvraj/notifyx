@@ -9,7 +9,11 @@ export class EmailService {
     await this.mailer.sendMail({
       to,
       subject: title,
-      text: message,
+      template: 'notification',
+      context: {
+        title,
+        message,
+      },
     });
   }
 }

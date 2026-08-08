@@ -8,13 +8,14 @@ import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { QueueService } from '../queue/queue.service';
 import { NotificationsGateway } from '../gateway/notifications.gateway';
-
+import { AuditService } from '../audit/audit.service';
 @Injectable()
 export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly queueService: QueueService,
     private readonly notificationsGateway: NotificationsGateway,
+    private readonly auditService: AuditService,
   ) {}
 
   async create(userId: string, dto: CreateNotificationDto) {
@@ -43,6 +44,21 @@ export class NotificationsService {
 
     await this.queueService.addNotificationJob(notification.id, delay);
     this.notificationsGateway.emitNotificationUpdated();
+
+    await this.auditService.log(
+      userId,
+      'CREATE',
+      'NOTIFICATION',
+      `Created notification "${notification.title}"`,
+      notification.id,
+      {
+        title: notification.title,
+        message: notification.message,
+        channel: notification.channel,
+        status: notification.status,
+        scheduledAt: notification.scheduledAt,
+      },
+    );
 
     return notification;
   }
@@ -143,6 +159,28 @@ export class NotificationsService {
 
     this.notificationsGateway.emitNotificationUpdated();
 
+    await this.auditService.log(
+      userId,
+      'UPDATE',
+      'NOTIFICATION',
+      `Updated notification "${notification.title}"`,
+      notification.id,
+      {
+        title: notification.title,
+        message: notification.message,
+        channel: notification.channel,
+        status: notification.status,
+        scheduledAt: notification.scheduledAt,
+      },
+      {
+        title: existing.title,
+        message: existing.message,
+        channel: existing.channel,
+        status: existing.status,
+        scheduledAt: existing.scheduledAt,
+      },
+    );
+
     return notification;
   }
 
@@ -166,6 +204,21 @@ export class NotificationsService {
     });
 
     this.notificationsGateway.emitNotificationUpdated();
+
+    await this.auditService.log(
+      userId,
+      'DELETE',
+      'NOTIFICATION',
+      `Deleted notification "${notification.title}"`,
+      notification.id,
+      {
+        title: notification.title,
+        message: notification.message,
+        channel: notification.channel,
+        status: notification.status,
+        scheduledAt: notification.scheduledAt,
+      },
+    );
 
     return notification;
   }

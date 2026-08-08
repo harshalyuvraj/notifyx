@@ -1,20 +1,30 @@
 {
   "name": "notifyx",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Full-stack notification scheduling platform built with NestJS, Next.js, PostgreSQL, Redis, BullMQ, and Prisma.",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.13.1",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"No tests configured at the workspace root\" && exit 0"
   },
-  "keywords": [],
+  "keywords": [
+    "nestjs",
+    "nextjs",
+    "prisma",
+    "postgresql",
+    "redis",
+    "bullmq",
+    "socketio",
+    "docker"
+  ],
   "author": "",
   "license": "ISC",
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": "^11.13.1",
+      "version": "11.13.1",
       "onFail": "download"
     }
-  },
-  "type": "module"
+  }
 }

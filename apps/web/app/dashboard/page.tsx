@@ -15,8 +15,25 @@ interface Notification {
   scheduledAt: string;
 }
 
+interface AuditHistory {
+  id: string;
+  action: string;
+  description: string;
+  createdAt: string;
+  snapshot: any;
+  previousSnapshot: any;
+}
+
+interface AuditLog {
+  notificationId: string;
+  latestAction: string;
+  latestTime: string;
+  history: AuditHistory[];
+}
+
 export default function DashboardPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
@@ -51,6 +68,9 @@ export default function DashboardPage() {
 
       const statsRes = await api.get("/notifications/stats");
       setStats(statsRes.data);
+
+      const auditRes = await api.get("/audit?limit=10");
+      setAuditLogs(auditRes.data.logs);
     } catch (err) {
       console.error(err);
     } finally {
@@ -504,6 +524,190 @@ export default function DashboardPage() {
             </button>
           </div>
         )}  
+
+        <div className="mt-10 rounded-xl bg-white p-6 shadow">
+          <h2 className="mb-6 text-3xl font-bold">
+            Notification History
+          </h2>
+
+          {auditLogs.length === 0 ? (
+            <p className="text-gray-500">No activity yet.</p>
+          ) : (
+            <div className="space-y-8">
+              {auditLogs.map((notification) => (
+                <div
+                  key={notification.notificationId}
+                  className="rounded-xl border bg-slate-50 p-6 shadow-sm"
+                >
+                  <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-2xl font-bold">
+                        {notification.history[0]?.snapshot?.title ??
+                          "Deleted Notification"}
+                      </h3>
+
+                      <p className="mt-1 text-gray-500">
+                        {notification.history[0]?.snapshot?.channel}
+                      </p>
+                    </div>
+
+                    <span
+                      className={`rounded-full px-4 py-2 text-sm font-bold text-white ${
+                        notification.latestAction === "CREATE"
+                          ? "bg-green-600"
+                          : notification.latestAction === "UPDATE"
+                          ? "bg-yellow-500"
+                          : "bg-red-600"
+                      }`}
+                    >
+                      {notification.latestAction}
+                    </span>
+                  </div>
+
+                  <div className="space-y-6">
+                    {notification.history.map((event) => (
+                      <div
+                        key={event.id}
+                        className="rounded-lg border bg-white p-4"
+                      >
+                        <div className="mb-3 flex items-center gap-3">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-bold text-white ${
+                              event.action === "CREATE"
+                                ? "bg-green-600"
+                                : event.action === "UPDATE"
+                                ? "bg-yellow-500"
+                                : "bg-red-600"
+                            }`}
+                          >
+                            {event.action}
+                          </span>
+
+                          <span className="text-sm text-gray-500">
+                            {new Date(event.createdAt).toLocaleString("en-IN", {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })}
+                          </span>
+                        </div>
+
+                        {event.action === "CREATE" && event.snapshot && (
+                          <div className="space-y-2 text-sm">
+                            <p>
+                              <strong>Title:</strong>{" "}
+                              {event.snapshot.title}
+                            </p>
+
+                            <p>
+                              <strong>Message:</strong>{" "}
+                              {event.snapshot.message}
+                            </p>
+
+                            <p>
+                              <strong>Scheduled:</strong>{" "}
+                              {new Date(
+                                event.snapshot.scheduledAt
+                              ).toLocaleString("en-IN")}
+                            </p>
+                          </div>
+                        )}
+
+                        {event.action === "UPDATE" &&
+                          event.snapshot &&
+                          event.previousSnapshot && (
+                            <div className="space-y-4 text-sm">
+                              {event.snapshot.title !==
+                                event.previousSnapshot.title && (
+                                <div>
+                                  <p className="font-semibold">
+                                    Title
+                                  </p>
+
+                                  <p className="text-red-600">
+                                    {event.previousSnapshot.title}
+                                  </p>
+
+                                  <p>↓</p>
+
+                                  <p className="text-green-600">
+                                    {event.snapshot.title}
+                                  </p>
+                                </div>
+                              )}
+
+                              {event.snapshot.message !==
+                                event.previousSnapshot.message && (
+                                <div>
+                                  <p className="font-semibold">
+                                    Message
+                                  </p>
+
+                                  <p className="text-red-600">
+                                    {event.previousSnapshot.message}
+                                  </p>
+
+                                  <p>↓</p>
+
+                                  <p className="text-green-600">
+                                    {event.snapshot.message}
+                                  </p>
+                                </div>
+                              )}
+
+                              {event.snapshot.scheduledAt !==
+                                event.previousSnapshot.scheduledAt && (
+                                <div>
+                                  <p className="font-semibold">
+                                    Scheduled Time
+                                  </p>
+
+                                  <p className="text-red-600">
+                                    {new Date(
+                                      event.previousSnapshot.scheduledAt
+                                    ).toLocaleString("en-IN")}
+                                  </p>
+
+                                  <p>↓</p>
+
+                                  <p className="text-green-600">
+                                    {new Date(
+                                      event.snapshot.scheduledAt
+                                    ).toLocaleString("en-IN")}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                        {event.action === "DELETE" && (
+                          <div className="text-sm">
+                            <p className="text-red-600 font-semibold">
+                              Notification deleted.
+                            </p>
+
+                            {event.snapshot && (
+                              <>
+                                <p className="mt-2">
+                                  <strong>Final Title:</strong>{" "}
+                                  {event.snapshot.title}
+                                </p>
+
+                                <p>
+                                  <strong>Final Message:</strong>{" "}
+                                  {event.snapshot.message}
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
       </div>
     </main>

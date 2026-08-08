@@ -5,9 +5,10 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
 import { QueueModule } from '../queue/queue.module';
 import { GatewayModule } from '../gateway/gateway.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [PrismaModule, EmailModule, QueueModule, GatewayModule],
+  imports: [PrismaModule, EmailModule, QueueModule, GatewayModule, AuditModule],
   controllers: [NotificationsController],
   providers: [NotificationsService],
 })
