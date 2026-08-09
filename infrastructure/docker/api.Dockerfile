@@ -45,8 +45,6 @@ RUN pnpm install --prod --filter api --frozen-lockfile
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 
-RUN pnpm --filter api exec prisma generate
-
 EXPOSE 3001
 
 WORKDIR /app/apps/api
