@@ -44,8 +44,8 @@ RUN pnpm install --prod --filter api --frozen-lockfile
 
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+RUN pnpm --filter api exec prisma generate
 
 EXPOSE 3001
 
