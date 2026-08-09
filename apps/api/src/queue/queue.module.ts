@@ -9,8 +9,7 @@ import { GatewayModule } from '../gateway/gateway.module';
   imports: [
     BullModule.forRoot({
       connection: {
-        host: process.env.REDIS_HOST ?? 'localhost',
-        port: Number(process.env.REDIS_PORT ?? 6379),
+        url: process.env.REDIS_URL,
       },
     }),
 
