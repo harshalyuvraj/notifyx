@@ -1,4 +1,5 @@
 # ---------- Dependencies ----------
+
 FROM node:22-alpine AS deps
 
 RUN apk add --no-cache libc6-compat
@@ -13,6 +14,7 @@ RUN pnpm install --frozen-lockfile
 
 
 # ---------- Builder ----------
+
 FROM node:22-alpine AS builder
 
 RUN apk add --no-cache libc6-compat
@@ -28,6 +30,7 @@ RUN pnpm --filter api run build
 
 
 # ---------- Runtime ----------
+
 FROM node:22-alpine AS runner
 
 RUN apk add --no-cache libc6-compat
@@ -44,6 +47,9 @@ RUN pnpm install --prod --filter api --frozen-lockfile
 
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
+
+# Generate Prisma Client in the production image
+RUN pnpm --filter api exec prisma generate
 
 EXPOSE 3001
 
