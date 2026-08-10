@@ -91,7 +91,7 @@ export default function DashboardPage() {
   }, [router, page, search]);
 
   useEffect(() => {
-    const socket = io("http://localhost:3001");
+    const socket = io(process.env.NEXT_PUBLIC_API_URL);
 
     socket.on("notificationUpdated", async () => {
       await loadNotifications();

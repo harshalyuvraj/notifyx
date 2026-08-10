@@ -10,14 +10,13 @@ datasource db {
 model User {
   id            String         @id @default(cuid())
   email         String         @unique
-  password      String
   name          String
-  role          String         @default("USER")
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  
-  notifications Notification[]
+  password      String
+  role          String         @default("USER")
   auditLogs     AuditLog[]
+  notifications Notification[]
 }
 
 model Notification {
@@ -34,19 +33,14 @@ model Notification {
 }
 
 model AuditLog {
-  id          String   @id @default(cuid())
-
-  action      String
-  entity      String
-  entityId    String?
-
-  description String
-
-  snapshot         Json?
+  id               String   @id @default(cuid())
+  action           String
+  entity           String
+  entityId         String?
+  description      String
+  createdAt        DateTime @default(now())
+  userId           String
   previousSnapshot Json?
-
-  createdAt DateTime @default(now())
-
-  userId String
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshot         Json?
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
