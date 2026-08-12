@@ -1,4 +1,5 @@
 # ---------- Dependencies ----------
+
 FROM node:22-alpine AS deps
 
 RUN apk add --no-cache libc6-compat
@@ -13,10 +14,14 @@ RUN pnpm install --frozen-lockfile
 
 
 # ---------- Builder ----------
+
 FROM node:22-alpine AS builder
 
 RUN apk add --no-cache libc6-compat
 RUN corepack enable
+
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 WORKDIR /app
 
@@ -27,6 +32,7 @@ RUN pnpm --filter web run build
 
 
 # ---------- Runtime ----------
+
 FROM node:22-alpine AS runner
 
 RUN apk add --no-cache libc6-compat
