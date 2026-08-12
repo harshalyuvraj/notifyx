@@ -7,7 +7,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: true,
+    origin: ['http://localhost:3000', 'https://notifyx-web.onrender.com'],
     credentials: true,
   });
 
