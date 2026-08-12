@@ -3,7 +3,8 @@ import { Server } from 'socket.io';
 
 @WebSocketGateway({
   cors: {
-    origin: 'http://localhost:3000',
+    origin: ['http://localhost:3000', 'https://notifyx-web.onrender.com'],
+    credentials: true,
   },
 })
 export class NotificationsGateway {
