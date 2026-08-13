@@ -22,14 +22,18 @@ import { EmailService } from './email.service';
       },
 
       template: {
-        dir: join(process.cwd(), 'src', 'templates'),
+        // Works after Nest build on Render
+        dir: join(__dirname, '..', 'templates'),
+
         adapter: new HandlebarsAdapter(),
+
         options: {
           strict: true,
         },
       },
     }),
   ],
+
   providers: [EmailService],
   exports: [EmailService],
 })
