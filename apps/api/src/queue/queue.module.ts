@@ -10,6 +10,16 @@ import { GatewayModule } from '../gateway/gateway.module';
     BullModule.forRoot({
       connection: {
         url: process.env.REDIS_URL,
+
+        maxRetriesPerRequest: null,
+
+        enableReadyCheck: false,
+
+        keepAlive: 10000,
+
+        retryStrategy(times) {
+          return Math.min(times * 200, 3000);
+        },
       },
     }),
 
