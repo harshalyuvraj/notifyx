@@ -37,23 +37,43 @@ export class NotificationsProcessor extends WorkerHost {
       return;
     }
 
-    await this.emailService.sendNotification(
-      notification.user.email,
-      notification.title,
-      notification.message,
-    );
+    try {
+      await this.emailService.sendNotification(
+        notification.user.email,
+        notification.title,
+        notification.message,
+      );
 
-    await this.prisma.notification.update({
-      where: {
-        id: notification.id,
-      },
-      data: {
-        status: 'SENT',
-      },
-    });
+      await this.prisma.notification.update({
+        where: {
+          id: notification.id,
+        },
+        data: {
+          status: 'SENT',
+        },
+      });
 
-    this.notificationsGateway.emitNotificationUpdated();
+      this.notificationsGateway.emitNotificationUpdated();
 
-    this.logger.log(`Notification ${notification.id} sent successfully`);
+      this.logger.log(`Notification ${notification.id} sent successfully`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send notification ${notification.id}`,
+        error,
+      );
+
+      await this.prisma.notification.update({
+        where: {
+          id: notification.id,
+        },
+        data: {
+          status: 'FAILED',
+        },
+      });
+
+      this.notificationsGateway.emitNotificationUpdated();
+
+      throw error;
+    }
   }
 }
