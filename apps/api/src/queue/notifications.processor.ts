@@ -38,6 +38,10 @@ export class NotificationsProcessor extends WorkerHost {
     }
 
     try {
+      this.logger.log(
+        `Sending notification ${notification.id} to ${notification.user.email}`,
+      );
+
       await this.emailService.sendNotification(
         notification.user.email,
         notification.title,
@@ -53,13 +57,15 @@ export class NotificationsProcessor extends WorkerHost {
         },
       });
 
+      this.logger.log(`Notification ${notification.id} marked as SENT`);
+
       this.notificationsGateway.emitNotificationUpdated();
 
       this.logger.log(`Notification ${notification.id} sent successfully`);
     } catch (error) {
       this.logger.error(
         `Failed to send notification ${notification.id}`,
-        error,
+        error instanceof Error ? error.stack : String(error),
       );
 
       await this.prisma.notification.update({
@@ -72,6 +78,8 @@ export class NotificationsProcessor extends WorkerHost {
       });
 
       this.notificationsGateway.emitNotificationUpdated();
+
+      this.logger.warn(`Notification ${notification.id} marked as FAILED`);
 
       throw error;
     }
