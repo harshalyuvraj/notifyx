@@ -9,6 +9,7 @@ import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { QueueService } from '../queue/queue.service';
 import { NotificationsGateway } from '../gateway/notifications.gateway';
 import { AuditService } from '../audit/audit.service';
+
 @Injectable()
 export class NotificationsService {
   constructor(
@@ -43,6 +44,7 @@ export class NotificationsService {
       : 0;
 
     await this.queueService.addNotificationJob(notification.id, delay);
+
     this.notificationsGateway.emitNotificationUpdated();
 
     await this.auditService.log(
@@ -142,14 +144,18 @@ export class NotificationsService {
       throw new NotFoundException('Notification not found.');
     }
 
+    // Remove the old queued job before creating the updated one.
+    await this.queueService.removeNotificationJob(id);
+
     const notification = await this.prisma.notification.update({
       where: {
         id,
       },
-      data: dto,
+      data: {
+        ...dto,
+        status: 'PENDING',
+      },
     });
-
-    await this.queueService.removeNotificationJob(id);
 
     const delay = notification.scheduledAt
       ? Math.max(0, new Date(notification.scheduledAt).getTime() - Date.now())
@@ -197,6 +203,7 @@ export class NotificationsService {
     }
 
     await this.queueService.removeNotificationJob(id);
+
     const notification = await this.prisma.notification.delete({
       where: {
         id,

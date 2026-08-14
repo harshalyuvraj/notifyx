@@ -19,9 +19,15 @@ export class NotificationsProcessor extends WorkerHost {
   }
 
   async process(job: Job) {
-    this.logger.log(`Processing job ${job.name}`);
-
     const { notificationId } = job.data;
+
+    const currentAttempt = job.attemptsMade + 1;
+    const maxAttempts = job.opts.attempts ?? 1;
+
+    this.logger.log(
+      `Processing job ${job.name} for notification ${notificationId} ` +
+        `(attempt ${currentAttempt}/${maxAttempts})`,
+    );
 
     const notification = await this.prisma.notification.findUnique({
       where: {
@@ -63,23 +69,47 @@ export class NotificationsProcessor extends WorkerHost {
 
       this.logger.log(`Notification ${notification.id} sent successfully`);
     } catch (error) {
+      const isFinalAttempt = currentAttempt >= maxAttempts;
+
       this.logger.error(
-        `Failed to send notification ${notification.id}`,
+        `Failed to send notification ${notification.id} ` +
+          `(attempt ${currentAttempt}/${maxAttempts})`,
         error instanceof Error ? error.stack : String(error),
       );
 
-      await this.prisma.notification.update({
-        where: {
-          id: notification.id,
-        },
-        data: {
-          status: 'FAILED',
-        },
-      });
+      if (isFinalAttempt) {
+        await this.prisma.notification.update({
+          where: {
+            id: notification.id,
+          },
+          data: {
+            status: 'FAILED',
+          },
+        });
 
-      this.notificationsGateway.emitNotificationUpdated();
+        this.notificationsGateway.emitNotificationUpdated();
 
-      this.logger.warn(`Notification ${notification.id} marked as FAILED`);
+        this.logger.warn(
+          `Notification ${notification.id} marked as FAILED ` +
+            `after ${maxAttempts} attempt(s)`,
+        );
+      } else {
+        await this.prisma.notification.update({
+          where: {
+            id: notification.id,
+          },
+          data: {
+            status: 'PENDING',
+          },
+        });
+
+        this.notificationsGateway.emitNotificationUpdated();
+
+        this.logger.warn(
+          `Notification ${notification.id} will be retried ` +
+            `(attempt ${currentAttempt + 1}/${maxAttempts})`,
+        );
+      }
 
       throw error;
     }

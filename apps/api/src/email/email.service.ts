@@ -20,8 +20,7 @@ export class EmailService {
     title: string,
     message: string,
   ): Promise<void> {
-    const from =
-      process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+    const from = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
 
     const { data, error } = await this.resend.emails.send({
       from,
@@ -31,9 +30,7 @@ export class EmailService {
     });
 
     if (error) {
-      throw new Error(
-        `Resend email failed: ${JSON.stringify(error)}`,
-      );
+      throw new Error(`Resend email failed: ${JSON.stringify(error)}`);
     }
 
     console.log(
