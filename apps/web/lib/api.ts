@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+const NEXT_PUBLIC_API_URL =
+  process.env.NEXT_PUBLIC_API_URL;
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: NEXT_PUBLIC_API_URL,
 });
 
 api.interceptors.request.use((config) => {
@@ -15,5 +18,10 @@ api.interceptors.request.use((config) => {
 
   return config;
 });
+
+export const getProfile = async () => {
+  const response = await api.get('/auth/profile');
+  return response.data;
+};
 
 export default api;

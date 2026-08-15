@@ -15,6 +15,11 @@ model User {
   updatedAt     DateTime       @updatedAt
   password      String
   role          String         @default("USER")
+  emailVerified              Boolean   @default(false)
+  emailVerificationTokenHash String?
+  emailVerificationExpiresAt DateTime?
+  passwordResetTokenHash String?
+  passwordResetExpiresAt DateTime?
   auditLogs     AuditLog[]
   notifications Notification[]
 }

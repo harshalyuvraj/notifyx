@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
@@ -37,36 +38,42 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-slate-100">
       <div className="w-full max-w-md rounded-xl bg-white shadow-lg p-8">
-
         <h1 className="text-4xl font-bold text-blue-600 mb-8">
           Login
         </h1>
 
-        <form
-          onSubmit={handleLogin}
-          className="space-y-5"
-        >
-
+        <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label>Email</label>
+            <label htmlFor="email">Email</label>
 
             <input
+              id="email"
               className="w-full border rounded-lg p-3 mt-1"
               type="email"
               value={email}
-              onChange={(e)=>setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
 
           <div>
-            <label>Password</label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="password">Password</label>
+
+              <Link
+                href="/forgot-password"
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
 
             <input
+              id="password"
               className="w-full border rounded-lg p-3 mt-1"
               type="password"
               value={password}
-              onChange={(e)=>setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
@@ -78,14 +85,13 @@ export default function LoginPage() {
           )}
 
           <button
-            className="w-full bg-blue-600 text-white rounded-lg p-3 hover:bg-blue-700"
+            type="submit"
+            className="w-full bg-blue-600 text-white rounded-lg p-3 hover:bg-blue-700 disabled:opacity-50"
             disabled={loading}
           >
             {loading ? "Logging in..." : "Login"}
           </button>
-
         </form>
-
       </div>
     </main>
   );

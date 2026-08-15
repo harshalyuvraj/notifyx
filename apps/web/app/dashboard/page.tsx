@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
+import { getProfile } from '../../lib/api';
+import type { UserProfile } from '../../types/auth';
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
+import Link from "next/link";
 
 interface Notification {
   id: string;
@@ -52,6 +55,23 @@ export default function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileError, setProfileError] = useState('');
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const data = await getProfile();
+        setProfile(data);
+      } catch (error) {
+        console.error(error);
+        setProfileError('Unable to load profile');
+      }
+    };
+
+    loadProfile();
+  }, []);
 
 
   async function loadNotifications() {
@@ -238,12 +258,38 @@ export default function DashboardPage() {
             NotifyX Dashboard
           </h1>
 
-          <button
-            onClick={logout}
-            className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
-          >
-            Logout
-          </button>
+          <div className="rounded-lg bg-white px-4 py-2 shadow">
+            <div className="font-semibold">
+              {profile?.name || 'User'}
+            </div>
+
+            <div className="text-sm text-gray-500">
+              {profile?.email || 'Loading...'}
+            </div>
+
+            {profile?.role && (
+              <div className="text-xs font-semibold text-blue-600">
+                {profile.role}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/change-password"
+              className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+            >
+              Change Password
+            </Link>
+
+            <button
+              onClick={logout}
+              className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+            >
+              Logout
+            </button>
+          </div>
+
         </div>
 
 

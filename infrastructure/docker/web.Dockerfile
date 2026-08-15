@@ -36,24 +36,18 @@ RUN pnpm --filter web run build
 FROM node:22-alpine AS runner
 
 RUN apk add --no-cache libc6-compat
-RUN corepack enable
 
 ENV NODE_ENV=production
+ENV PORT=10000
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/web/package.json apps/web/package.json
+COPY --from=builder /app/apps/web/.next/standalone ./standalone
+COPY --from=builder /app/apps/web/.next/static ./standalone/apps/web/.next/static
+COPY --from=builder /app/apps/web/public ./standalone/apps/web/public
 
-RUN pnpm install --prod --filter web --frozen-lockfile
+WORKDIR /app/standalone
 
-COPY --from=builder /app/apps/web/.next ./apps/web/.next
-COPY --from=builder /app/apps/web/public ./apps/web/public
-COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
-COPY --from=builder /app/apps/web/next.config.ts ./apps/web/next.config.ts
+EXPOSE 10000
 
-EXPOSE 3000
-
-WORKDIR /app/apps/web
-
-CMD ["pnpm", "start"]
+CMD ["node", "apps/web/server.js"]
