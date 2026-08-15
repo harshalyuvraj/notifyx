@@ -38,7 +38,7 @@ FROM node:22-alpine AS runner
 RUN apk add --no-cache libc6-compat
 
 ENV NODE_ENV=production
-ENV PORT=10000
+ENV HOSTNAME=0.0.0.0
 
 WORKDIR /app
 
@@ -50,4 +50,4 @@ WORKDIR /app/standalone
 
 EXPOSE 10000
 
-CMD ["node", "apps/web/server.js"]
+CMD ["sh", "-c", "HOSTNAME=0.0.0.0 PORT=${PORT:-10000} node apps/web/server.js"]
