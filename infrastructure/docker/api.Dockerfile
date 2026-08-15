@@ -55,4 +55,4 @@ EXPOSE 3001
 
 WORKDIR /app/apps/api
 
-CMD ["node", "dist/src/main.js"]
+CMD ["sh", "-c", "pnpm exec prisma migrate deploy && node dist/src/main.js"]

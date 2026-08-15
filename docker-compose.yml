@@ -1,66 +1,83 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16
     container_name: notifyx-postgres
     restart: unless-stopped
+
     environment:
       POSTGRES_USER: notifyx
       POSTGRES_PASSWORD: notifyx
       POSTGRES_DB: notifyx
+
     ports:
       - "5432:5432"
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U notifyx"]
+      test: ["CMD-SHELL", "pg_isready -U notifyx -d notifyx"]
       interval: 10s
       timeout: 5s
       retries: 5
+
 
   redis:
     image: redis:7-alpine
     container_name: notifyx-redis
     restart: unless-stopped
+
     ports:
       - "6379:6379"
+
     volumes:
       - redis_data:/data
+
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+
   api:
     build:
       context: .
       dockerfile: infrastructure/docker/api.Dockerfile
+
     container_name: notifyx-api
     restart: unless-stopped
+
     env_file:
-      - apps/api/.env
+      - apps/api/.env.docker
+
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+
     ports:
       - "3001:3001"
+
 
   web:
     build:
       context: .
       dockerfile: infrastructure/docker/web.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001
+
     container_name: notifyx-web
     restart: unless-stopped
+
     depends_on:
-      - api
+      api:
+        condition: service_started
+
     ports:
-      - "3000:3000"
-    environment:
-      NEXT_PUBLIC_API_URL: http://api:3001
+      - "3000:10000"
+
 
 volumes:
   postgres_data:
