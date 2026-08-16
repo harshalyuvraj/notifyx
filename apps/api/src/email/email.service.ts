@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
+import dns from "node:dns";
+
+dns.setDefaultResultOrder("ipv4first");
 
 @Injectable()
 export class EmailService {
