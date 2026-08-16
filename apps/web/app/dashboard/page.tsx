@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { getProfile } from '../../lib/api';
-import type { UserProfile } from '../../types/auth';
+import { useEffect, useState } from "react";
+import { getProfile } from "@/lib/api";
+import type { UserProfile } from "@/types/auth";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
@@ -34,56 +34,104 @@ interface AuditLog {
   history: AuditHistory[];
 }
 
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function getLatestHistoryEvent(history: AuditHistory[]) {
+  if (!history.length) return null;
+
+  return [...history].sort(
+    (a, b) =>
+      new Date(b.createdAt).getTime() -
+      new Date(a.createdAt).getTime(),
+  )[0];
+}
+
+function getStatusClasses(status: string) {
+  switch (status) {
+    case "SENT":
+      return "bg-green-100 text-green-700";
+    case "PENDING":
+      return "bg-yellow-100 text-yellow-700";
+    case "FAILED":
+      return "bg-red-100 text-red-700";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
+}
+
+function getActionClasses(action: string) {
+  switch (action) {
+    case "CREATE":
+      return "bg-green-100 text-green-700";
+    case "UPDATE":
+      return "bg-yellow-100 text-yellow-700";
+    case "DELETE":
+      return "bg-red-100 text-red-700";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
+}
+
 export default function DashboardPage() {
+  const router = useRouter();
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [channel, setChannel] = useState("EMAIL");
   const [scheduledAt, setScheduledAt] = useState("");
+
   const [creating, setCreating] = useState(false);
-  const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
+
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
     sent: 0,
     failed: 0,
   });
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [profileError, setProfileError] = useState('');
+  const [profileError, setProfileError] = useState("");
 
   useEffect(() => {
-    const loadProfile = async () => {
+    async function loadProfile() {
       try {
         const data = await getProfile();
         setProfile(data);
       } catch (error) {
         console.error(error);
-        setProfileError('Unable to load profile');
+        setProfileError("Unable to load profile");
       }
-    };
+    }
 
     loadProfile();
   }, []);
-
 
   async function loadNotifications() {
     setLoading(true);
 
     try {
       const res = await api.get(
-        `/notifications?page=${page}&limit=5&search=${encodeURIComponent(search)}`,
+        `/notifications?page=${page}&limit=5&search=${encodeURIComponent(
+          search,
+        )}`,
       );
 
       setNotifications(res.data.notifications);
-
       setTotalPages(res.data.totalPages);
 
       const statsRes = await api.get("/notifications/stats");
@@ -98,7 +146,6 @@ export default function DashboardPage() {
     }
   }
 
-
   useEffect(() => {
     const token = localStorage.getItem("token");
 
@@ -111,7 +158,14 @@ export default function DashboardPage() {
   }, [router, page, search]);
 
   useEffect(() => {
-    const socket = io(process.env.NEXT_PUBLIC_API_URL);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+    if (!apiUrl) {
+      console.error("NEXT_PUBLIC_API_URL is not configured");
+      return;
+    }
+
+    const socket = io(apiUrl);
 
     socket.on("notificationUpdated", async () => {
       await loadNotifications();
@@ -122,11 +176,24 @@ export default function DashboardPage() {
     };
   }, []);
 
-
   async function createNotification(
     e: React.FormEvent<HTMLFormElement>,
   ) {
     e.preventDefault();
+
+    const yearMatch = scheduledAt.match(/^(\d{4})-/);
+
+    if (!yearMatch) {
+      toast.error("Please enter a valid 4-digit year.");
+      return;
+    }
+
+    const year = Number(yearMatch[1]);
+
+    if (year < 2026 || year > 9999) {
+      toast.error("Please enter a valid year.");
+      return;
+    }
 
     const selectedDate = new Date(scheduledAt);
 
@@ -135,22 +202,14 @@ export default function DashboardPage() {
       return;
     }
 
-    const year = selectedDate.getFullYear();
-
-    if (year < 2026 || year > 9999) {
-      toast.error("Please enter a valid year.");
+    if (selectedDate <= new Date()) {
+      toast.error("Scheduled time must be in the future.");
       return;
     }
 
     setCreating(true);
 
     try {
-
-      if (selectedDate <= new Date()) {
-        toast.error("Scheduled time must be in the future.");
-        return;
-      }
-
       if (editingId) {
         await api.patch(`/notifications/${editingId}`, {
           title,
@@ -158,29 +217,22 @@ export default function DashboardPage() {
           channel,
           scheduledAt: new Date(scheduledAt).toISOString(),
         });
-      } else {
 
+        toast.success("Notification updated successfully!");
+      } else {
         await api.post("/notifications", {
           title,
           message,
           channel,
           scheduledAt: new Date(scheduledAt).toISOString(),
         });
+
+        toast.success("Notification created successfully!");
       }
 
       await loadNotifications();
 
-      if (editingId) {
-        toast.success("Notification updated successfully!");
-      } else {
-        toast.success("Notification created successfully!");
-      }
-
-      setTitle("");
-      setMessage("");
-      setChannel("EMAIL");
-      setScheduledAt("");
-      setEditingId(null);
+      resetForm();
     } catch (err) {
       console.error(err);
       toast.error("Could not save notification.");
@@ -189,6 +241,13 @@ export default function DashboardPage() {
     }
   }
 
+  function resetForm() {
+    setTitle("");
+    setMessage("");
+    setChannel("EMAIL");
+    setScheduledAt("");
+    setEditingId(null);
+  }
 
   async function deleteNotification(id: string) {
     const confirmed = window.confirm(
@@ -201,6 +260,7 @@ export default function DashboardPage() {
       await api.delete(`/notifications/${id}`);
 
       await loadNotifications();
+
       toast.success("Notification deleted successfully!");
     } catch (err) {
       console.error(err);
@@ -224,537 +284,814 @@ export default function DashboardPage() {
       .slice(0, 16);
 
     setScheduledAt(localDate);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   }
-
-
 
   function logout() {
     localStorage.removeItem("token");
     router.push("/login");
   }
 
-  const filteredNotifications = notifications.filter((notification) => {
-    const query = search.toLowerCase();
+  const filteredNotifications = notifications.filter(
+    (notification) => {
+      const query = search.toLowerCase();
 
-    const matchesSearch =
-      notification.title.toLowerCase().includes(query) ||
-      notification.message.toLowerCase().includes(query);
+      const matchesSearch =
+        notification.title.toLowerCase().includes(query) ||
+        notification.message.toLowerCase().includes(query);
 
-    const matchesStatus =
-      statusFilter === "ALL" ||
-      notification.status === statusFilter;
+      const matchesStatus =
+        statusFilter === "ALL" ||
+        notification.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
-  });
-
+      return matchesSearch && matchesStatus;
+    },
+  );
 
   return (
-    <main className="min-h-screen bg-slate-200 p-8">
-      <div className="mx-auto max-w-5xl">
+    <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl">
+        {/* Header */}
+        <header className="mb-8 rounded-2xl bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
+                NotifyX
+              </p>
 
-        <div className="mb-8 flex items-center justify-between">
+              <h1 className="mt-1 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                Notification Dashboard
+              </h1>
 
-          <h1 className="text-5xl font-extrabold text-blue-600">
-            NotifyX Dashboard
-          </h1>
-
-          <div className="rounded-lg bg-white px-4 py-2 shadow">
-            <div className="font-semibold">
-              {profile?.name || 'User'}
+              <p className="mt-2 text-sm text-gray-500">
+                Create, schedule, and track your notifications.
+              </p>
             </div>
 
-            <div className="text-sm text-gray-500">
-              {profile?.email || 'Loading...'}
-            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="rounded-xl border border-gray-200 bg-slate-50 px-4 py-3">
+                {profile ? (
+                  <>
+                    <p className="font-semibold text-gray-900">
+                      {profile.name}
+                    </p>
 
-            {profile?.role && (
-              <div className="text-xs font-semibold text-blue-600">
-                {profile.role}
-              </div>
-            )}
-          </div>
+                    <p className="text-sm text-gray-500">
+                      {profile.email}
+                    </p>
 
-          <div className="flex items-center gap-3">
-            <Link
-              href="/change-password"
-              className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-            >
-              Change Password
-            </Link>
-
-            <button
-              onClick={logout}
-              className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
-            >
-              Logout
-            </button>
-          </div>
-
-        </div>
-
-
-        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <div className="rounded-lg bg-white p-5 shadow transition duration-300 hover:-translate-y-1 hover:shadow-lg">
-            <p className="text-sm font-medium uppercase tracking-wide text-gray-500">Total</p>
-            <h2 className="mt-2 text-3xl font-bold text-blue-600">
-              {stats.total}
-            </h2>
-          </div>
-
-          <div className="rounded-lg bg-white p-5 shadow transition duration-300 hover:-translate-y-1 hover:shadow-lg">
-            <p className="text-sm font-medium uppercase tracking-wide text-gray-500">Pending</p>
-            <h2 className="mt-2 text-3xl font-bold text-yellow-500">
-              {stats.pending}
-            </h2>
-          </div>
-
-          <div className="rounded-lg bg-white p-5 shadow transition duration-300 hover:-translate-y-1 hover:shadow-lg">
-            <p className="text-sm font-medium uppercase tracking-wide text-gray-500">Sent</p>
-            <h2 className="mt-2 text-3xl font-bold text-green-600">
-              {stats.sent}
-            </h2>
-          </div>
-
-          <div className="rounded-lg bg-white p-5 shadow transition duration-300 hover:-translate-y-1 hover:shadow-lg">
-            <p className="text-sm font-medium uppercase tracking-wide text-gray-500">Failed</p>
-            <h2 className="mt-2 text-3xl font-bold text-red-600">
-              {stats.failed}
-            </h2>
-          </div>
-        </div>
-
-        <form
-          onSubmit={createNotification}
-          className="mb-10 rounded-lg bg-white p-6 shadow space-y-4"
-        >
-          <h2 className="text-2xl font-semibold">
-            Create Notification
-          </h2>
-
-          <input
-            className="w-full rounded border p-3"
-            placeholder="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
-
-          <textarea
-            className="w-full rounded border p-3"
-            placeholder="Message"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            required
-          />
-
-          <select
-            className="w-full rounded border p-3"
-            value={channel}
-            onChange={(e) => setChannel(e.target.value)}
-          >
-            <option value="EMAIL">EMAIL</option>
-          </select>
-
-          <input
-            type="datetime-local"
-            className="w-full rounded border p-3"
-            value={scheduledAt}
-            onChange={(e) => setScheduledAt(e.target.value)}
-            required
-          />
-
-          <button
-            disabled={creating}
-            className="rounded bg-blue-600 px-5 py-3 text-white"
-          >
-            {creating
-              ? editingId
-                ? "Updating..."
-                : "Creating..."
-              : editingId
-                ? "Update Notification"
-                : "Create Notification"}
-          </button>
-
-
-          {editingId && (
-            <button
-              type="button"
-              onClick={() => {
-                setEditingId(null);
-                setTitle("");
-                setMessage("");
-                setChannel("EMAIL");
-                setScheduledAt("");
-              }}
-              className="ml-3 rounded bg-gray-500 px-5 py-3 text-white hover:bg-gray-600"
-            >
-              Cancel
-            </button>
-          )}
-
-
-        </form>
-
-        <div className="mb-6">
-          <h2 className="mb-2 text-2xl font-semibold">
-            Search Notifications
-          </h2>
-
-          <input
-            type="text"
-            placeholder="Search by title or message..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            className="w-full rounded-lg border border-gray-300 bg-white p-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <div className="mb-6 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setStatusFilter("ALL");
-              setPage(1);
-            }}
-            className={`rounded-full px-4 py-2 font-medium transition ${
-              statusFilter === "ALL"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-200 hover:bg-gray-300"
-            }`}
-          >
-            All ({stats.total})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setStatusFilter("PENDING");
-              setPage(1);
-            }}
-            className={`rounded-full px-4 py-2 font-medium transition ${
-              statusFilter === "PENDING"
-                ? "bg-yellow-500 text-white"
-                : "bg-gray-200 hover:bg-gray-300"
-            }`}
-          >
-            Pending ({stats.pending})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setStatusFilter("SENT");
-              setPage(1);
-            }}
-            className={`rounded-full px-4 py-2 font-medium transition ${
-              statusFilter === "SENT"
-                ? "bg-green-600 text-white"
-                : "bg-gray-200 hover:bg-gray-300"
-            }`}
-          >
-            Sent ({stats.sent})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setStatusFilter("FAILED");
-              setPage(1);
-            }}
-            className={`rounded-full px-4 py-2 font-medium transition ${
-              statusFilter === "FAILED"
-                ? "bg-red-600 text-white"
-                : "bg-gray-200 hover:bg-gray-300"
-            }`}
-          >
-            Failed ({stats.failed})
-          </button>
-        </div>
-
-
-        {loading ? (
-          <p>Loading notifications...</p>
-        ) : filteredNotifications.length === 0 ? (
-          <p className="rounded-lg bg-white p-6 text-center text-gray-500 shadow">
-            No notifications match your search.
-          </p>
-        ) : (
-          <div className="space-y-6">
-            {filteredNotifications.map((notification) => (
-              <div
-                key={notification.id}
-                className="rounded-xl bg-white p-6 shadow transition duration-300 hover:-translate-y-1 hover:shadow-lg"
-              >
-                <div className="mb-4 flex items-center justify-between">
-                  <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">
-                    📧 {notification.channel}
-                  </span>
-
-                  <span
-                    className={`rounded-full px-3 py-1 text-sm font-semibold ${
-                      notification.status === "SENT"
-                        ? "bg-green-100 text-green-700"
-                        : notification.status === "PENDING"
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {notification.status}
-                  </span>
-                </div>
-
-                <h2 className="text-2xl font-bold">
-                  {notification.title}
-                </h2>
-
-                <p className="mt-2 text-gray-600">
-                  {notification.message}
-                </p>
-
-                <div className="mt-5 flex gap-3">
-                  <button
-                    onClick={() => editNotification(notification)}
-                    className="rounded bg-yellow-500 px-4 py-2 text-white transition hover:bg-yellow-600"
-                  >
-                    ✏️ Edit
-                  </button>
-
-                  <button
-                    onClick={() => deleteNotification(notification.id)}
-                    className="rounded bg-red-600 px-4 py-2 text-white transition hover:bg-red-700"
-                  >
-                    🗑 Delete
-                  </button>
-                </div>
-
-                <div className="mt-5 border-t pt-4 text-sm text-gray-500">
-                  <p>
-                    📅{" "}
-                    {new Date(notification.scheduledAt).toLocaleDateString()}
+                    {profile.role && (
+                      <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-blue-600">
+                        {profile.role}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    {profileError || "Loading profile..."}
                   </p>
-
-                  <p>
-                    🕒{" "}
-                    {new Date(notification.scheduledAt).toLocaleTimeString()}
-                  </p>
-                </div>
+                )}
               </div>
-            ))}
-          </div>
-        )}
 
-        {totalPages > 1 && (
-          <div className="mt-8 flex items-center justify-center gap-4">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="rounded bg-gray-600 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Previous
-            </button>
-
-            <span className="rounded-lg bg-white px-4 py-2 shadow">
-              Page {page} of {totalPages}
-            </span>
-
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="rounded bg-blue-600 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        )}  
-
-        <div className="mt-10 rounded-xl bg-white p-6 shadow">
-          <h2 className="mb-6 text-3xl font-bold">
-            Notification History
-          </h2>
-
-          {auditLogs.length === 0 ? (
-            <p className="text-gray-500">No activity yet.</p>
-          ) : (
-            <div className="space-y-8">
-              {auditLogs.map((notification) => (
-                <div
-                  key={notification.notificationId}
-                  className="rounded-xl border bg-slate-50 p-6 shadow-sm"
+              <div className="flex gap-2">
+                <Link
+                  href="/change-password"
+                  className="rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-50"
                 >
-                  <div className="mb-6 flex items-center justify-between">
-                    <div>
-                      <h3 className="text-2xl font-bold">
-                        {notification.history[0]?.snapshot?.title ??
-                          "Deleted Notification"}
+                  Change Password
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Stats */}
+        <section className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="rounded-2xl bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">
+              Total
+            </p>
+
+            <p className="mt-2 text-3xl font-bold text-blue-600">
+              {stats.total}
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">
+              Pending
+            </p>
+
+            <p className="mt-2 text-3xl font-bold text-yellow-500">
+              {stats.pending}
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">
+              Sent
+            </p>
+
+            <p className="mt-2 text-3xl font-bold text-green-600">
+              {stats.sent}
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-gray-500">
+              Failed
+            </p>
+
+            <p className="mt-2 text-3xl font-bold text-red-600">
+              {stats.failed}
+            </p>
+          </div>
+        </section>
+
+        {/* Create / Edit */}
+        <section className="mb-8 rounded-2xl bg-white p-6 shadow-sm">
+          <div className="mb-6">
+            <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">
+              {editingId ? "Edit notification" : "New notification"}
+            </p>
+
+            <h2 className="mt-1 text-2xl font-bold text-gray-900">
+              {editingId
+                ? "Update your notification"
+                : "Create a notification"}
+            </h2>
+
+            <p className="mt-1 text-sm text-gray-500">
+              Schedule an email notification for a future date and
+              time.
+            </p>
+          </div>
+
+          <form onSubmit={createNotification} className="space-y-5">
+            <div>
+              <label
+                htmlFor="title"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Title
+              </label>
+
+              <input
+                id="title"
+                type="text"
+                placeholder="e.g. Weekly report"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-gray-300 p-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                required
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="message"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Message
+              </label>
+
+              <textarea
+                id="message"
+                rows={4}
+                placeholder="Write the notification message..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="mt-1 w-full resize-y rounded-lg border border-gray-300 p-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <div>
+                <label
+                  htmlFor="channel"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Channel
+                </label>
+
+                <select
+                  id="channel"
+                  value={channel}
+                  onChange={(e) => setChannel(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-gray-300 bg-white p-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                >
+                  <option value="EMAIL">Email</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="scheduledAt"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Scheduled time
+                </label>
+
+                <input
+                  id="scheduledAt"
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={(e) => {
+                    const value = e.target.value;
+
+                    // Native datetime-local values normally use:
+                    // YYYY-MM-DDTHH:mm
+                    //
+                    // Keep only the first 4 digits of the year.
+                    const match = value.match(/^(\d+)(-.*)$/);
+
+                    if (match) {
+                      const year = match[1].slice(0, 4);
+                      setScheduledAt(`${year}${match[2]}`);
+                    } else {
+                      setScheduledAt(value);
+                    }
+                  }}
+                  min="2026-01-01T00:00"
+                  max="9999-12-31T23:59"
+                  className="mt-1 w-full rounded-lg border border-gray-300 p-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                type="submit"
+                disabled={creating}
+                className="rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {creating
+                  ? editingId
+                    ? "Updating..."
+                    : "Creating..."
+                  : editingId
+                    ? "Update Notification"
+                    : "Create Notification"}
+              </button>
+
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="rounded-lg border border-gray-300 px-6 py-3 font-semibold text-gray-700 transition hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </form>
+        </section>
+
+        {/* Search + filters */}
+        <section className="mb-8 rounded-2xl bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="w-full lg:max-w-xl">
+              <label
+                htmlFor="search"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Search notifications
+              </label>
+
+              <input
+                id="search"
+                type="text"
+                placeholder="Search by title or message..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                className="mt-1 w-full rounded-lg border border-gray-300 p-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter("ALL");
+                  setPage(1);
+                }}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  statusFilter === "ALL"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                All ({stats.total})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter("PENDING");
+                  setPage(1);
+                }}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  statusFilter === "PENDING"
+                    ? "bg-yellow-500 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Pending ({stats.pending})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter("SENT");
+                  setPage(1);
+                }}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  statusFilter === "SENT"
+                    ? "bg-green-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Sent ({stats.sent})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter("FAILED");
+                  setPage(1);
+                }}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  statusFilter === "FAILED"
+                    ? "bg-red-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Failed ({stats.failed})
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Notifications */}
+        <section className="mb-10">
+          <div className="mb-4 flex items-end justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">
+                Notifications
+              </p>
+
+              <h2 className="mt-1 text-2xl font-bold text-gray-900">
+                Your scheduled notifications
+              </h2>
+            </div>
+
+            <p className="text-sm text-gray-500">
+              Page {page} of {totalPages}
+            </p>
+          </div>
+
+          {loading ? (
+            <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+              <p className="text-gray-500">
+                Loading notifications...
+              </p>
+            </div>
+          ) : filteredNotifications.length === 0 ? (
+            <div className="rounded-2xl bg-white p-10 text-center shadow-sm">
+              <p className="text-lg font-semibold text-gray-900">
+                No notifications found
+              </p>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Try changing your search or filter.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredNotifications.map((notification) => (
+                <article
+                  key={notification.id}
+                  className="rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md"
+                >
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                          {notification.channel}
+                        </span>
+
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(
+                            notification.status,
+                          )}`}
+                        >
+                          {notification.status}
+                        </span>
+                      </div>
+
+                      <h3 className="text-xl font-bold text-gray-900">
+                        {notification.title}
                       </h3>
 
-                      <p className="mt-1 text-gray-500">
-                        {notification.history[0]?.snapshot?.channel}
+                      <p className="mt-2 text-gray-600">
+                        {notification.message}
                       </p>
                     </div>
 
-                    <span
-                      className={`rounded-full px-4 py-2 text-sm font-bold text-white ${
-                        notification.latestAction === "CREATE"
-                          ? "bg-green-600"
-                          : notification.latestAction === "UPDATE"
-                          ? "bg-yellow-500"
-                          : "bg-red-600"
-                      }`}
-                    >
-                      {notification.latestAction}
-                    </span>
-                  </div>
-
-                  <div className="space-y-6">
-                    {notification.history.map((event) => (
-                      <div
-                        key={event.id}
-                        className="rounded-lg border bg-white p-4"
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          editNotification(notification)
+                        }
+                        className="rounded-lg border border-yellow-500 px-4 py-2 text-sm font-semibold text-yellow-700 transition hover:bg-yellow-50"
                       >
-                        <div className="mb-3 flex items-center gap-3">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-bold text-white ${
-                              event.action === "CREATE"
-                                ? "bg-green-600"
-                                : event.action === "UPDATE"
-                                ? "bg-yellow-500"
-                                : "bg-red-600"
-                            }`}
-                          >
-                            {event.action}
-                          </span>
+                        Edit
+                      </button>
 
-                          <span className="text-sm text-gray-500">
-                            {new Date(event.createdAt).toLocaleString("en-IN", {
-                              dateStyle: "medium",
-                              timeStyle: "short",
-                            })}
-                          </span>
-                        </div>
-
-                        {event.action === "CREATE" && event.snapshot && (
-                          <div className="space-y-2 text-sm">
-                            <p>
-                              <strong>Title:</strong>{" "}
-                              {event.snapshot.title}
-                            </p>
-
-                            <p>
-                              <strong>Message:</strong>{" "}
-                              {event.snapshot.message}
-                            </p>
-
-                            <p>
-                              <strong>Scheduled:</strong>{" "}
-                              {new Date(
-                                event.snapshot.scheduledAt
-                              ).toLocaleString("en-IN")}
-                            </p>
-                          </div>
-                        )}
-
-                        {event.action === "UPDATE" &&
-                          event.snapshot &&
-                          event.previousSnapshot && (
-                            <div className="space-y-4 text-sm">
-                              {event.snapshot.title !==
-                                event.previousSnapshot.title && (
-                                <div>
-                                  <p className="font-semibold">
-                                    Title
-                                  </p>
-
-                                  <p className="text-red-600">
-                                    {event.previousSnapshot.title}
-                                  </p>
-
-                                  <p>↓</p>
-
-                                  <p className="text-green-600">
-                                    {event.snapshot.title}
-                                  </p>
-                                </div>
-                              )}
-
-                              {event.snapshot.message !==
-                                event.previousSnapshot.message && (
-                                <div>
-                                  <p className="font-semibold">
-                                    Message
-                                  </p>
-
-                                  <p className="text-red-600">
-                                    {event.previousSnapshot.message}
-                                  </p>
-
-                                  <p>↓</p>
-
-                                  <p className="text-green-600">
-                                    {event.snapshot.message}
-                                  </p>
-                                </div>
-                              )}
-
-                              {event.snapshot.scheduledAt !==
-                                event.previousSnapshot.scheduledAt && (
-                                <div>
-                                  <p className="font-semibold">
-                                    Scheduled Time
-                                  </p>
-
-                                  <p className="text-red-600">
-                                    {new Date(
-                                      event.previousSnapshot.scheduledAt
-                                    ).toLocaleString("en-IN")}
-                                  </p>
-
-                                  <p>↓</p>
-
-                                  <p className="text-green-600">
-                                    {new Date(
-                                      event.snapshot.scheduledAt
-                                    ).toLocaleString("en-IN")}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                        {event.action === "DELETE" && (
-                          <div className="text-sm">
-                            <p className="text-red-600 font-semibold">
-                              Notification deleted.
-                            </p>
-
-                            {event.snapshot && (
-                              <>
-                                <p className="mt-2">
-                                  <strong>Final Title:</strong>{" "}
-                                  {event.snapshot.title}
-                                </p>
-
-                                <p>
-                                  <strong>Final Message:</strong>{" "}
-                                  {event.snapshot.message}
-                                </p>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          deleteNotification(notification.id)
+                        }
+                        className="rounded-lg border border-red-500 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                </div>
+
+                  <div className="mt-5 grid grid-cols-1 gap-3 border-t pt-4 text-sm text-gray-500 sm:grid-cols-2">
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Scheduled:
+                      </span>{" "}
+                      {formatDateTime(notification.scheduledAt)}
+                    </div>
+
+                    <div className="sm:text-right">
+                      <span className="font-medium text-gray-700">
+                        Channel:
+                      </span>{" "}
+                      {notification.channel}
+                    </div>
+                  </div>
+                </article>
               ))}
             </div>
           )}
-        </div>
 
+          {totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setPage((p) => Math.max(1, p - 1))
+                }
+                disabled={page === 1}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Previous
+              </button>
+
+              <span className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm">
+                {page} / {totalPages}
+              </span>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setPage((p) =>
+                    Math.min(totalPages, p + 1),
+                  )
+                }
+                disabled={page === totalPages}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* Notification History */}
+        <section className="rounded-2xl bg-white p-6 shadow-sm">
+          <div className="mb-6">
+            <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">
+              Audit trail
+            </p>
+
+            <h2 className="mt-1 text-2xl font-bold text-gray-900">
+              Notification History
+            </h2>
+
+            <p className="mt-1 text-sm text-gray-500">
+              See how each notification was created, updated, or
+              deleted.
+            </p>
+          </div>
+
+          {auditLogs.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center">
+              <p className="font-medium text-gray-700">
+                No activity yet.
+              </p>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Changes to your notifications will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {auditLogs.map((notification) => {
+                const latestEvent = getLatestHistoryEvent(
+                  notification.history,
+                );
+
+                const latestSnapshot = latestEvent?.snapshot;
+
+                return (
+                  <div
+                    key={notification.notificationId}
+                    className="rounded-xl border border-gray-200 bg-slate-50 p-5"
+                  >
+                    {/* Current state */}
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          Current state
+                        </p>
+
+                        <h3 className="mt-1 text-xl font-bold text-gray-900">
+                          {latestSnapshot?.title ??
+                            "Deleted Notification"}
+                        </h3>
+
+                        {latestSnapshot?.channel && (
+                          <p className="mt-1 text-sm text-gray-500">
+                            {latestSnapshot.channel}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="text-left sm:text-right">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${getActionClasses(
+                            notification.latestAction,
+                          )}`}
+                        >
+                          {notification.latestAction}
+                        </span>
+
+                        {notification.latestTime && (
+                          <p className="mt-2 text-xs text-gray-500">
+                            {formatDateTime(notification.latestTime)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Timeline */}
+                    <div className="relative mt-6 border-l-2 border-gray-200 pl-6">
+                      {notification.history.map(
+                        (event, index) => (
+                          <div
+                            key={event.id}
+                            className="relative pb-6 last:pb-0"
+                          >
+                            <span className="absolute -left-[31px] top-1 h-3 w-3 rounded-full border-2 border-white bg-blue-600 shadow" />
+
+                            <div className="rounded-xl border border-gray-200 bg-white p-4">
+                              <div className="flex flex-wrap items-center gap-3">
+                                <span
+                                  className={`rounded-full px-3 py-1 text-xs font-bold ${getActionClasses(
+                                    event.action,
+                                  )}`}
+                                >
+                                  {event.action}
+                                </span>
+
+                                <span className="text-xs text-gray-500">
+                                  {formatDateTime(
+                                    event.createdAt,
+                                  )}
+                                </span>
+                              </div>
+
+                              {event.action === "CREATE" &&
+                                event.snapshot && (
+                                  <div className="mt-4 space-y-2 text-sm text-gray-700">
+                                    <p>
+                                      <strong>Title:</strong>{" "}
+                                      {event.snapshot.title}
+                                    </p>
+
+                                    <p>
+                                      <strong>Message:</strong>{" "}
+                                      {event.snapshot.message}
+                                    </p>
+
+                                    <p>
+                                      <strong>Scheduled:</strong>{" "}
+                                      {formatDateTime(
+                                        event.snapshot
+                                          .scheduledAt,
+                                      )}
+                                    </p>
+                                  </div>
+                                )}
+
+                              {event.action === "UPDATE" &&
+                                event.snapshot &&
+                                event.previousSnapshot && (
+                                  <div className="mt-4 space-y-4 text-sm">
+                                    {event.snapshot.title !==
+                                      event.previousSnapshot
+                                        .title && (
+                                      <div>
+                                        <p className="font-semibold text-gray-800">
+                                          Title
+                                        </p>
+
+                                        <p className="mt-1 text-red-600">
+                                          {event.previousSnapshot.title}
+                                        </p>
+
+                                        <p className="my-1 text-xs text-gray-400">
+                                          changed to
+                                        </p>
+
+                                        <p className="text-green-600">
+                                          {event.snapshot.title}
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    {event.snapshot.message !==
+                                      event.previousSnapshot
+                                        .message && (
+                                      <div>
+                                        <p className="font-semibold text-gray-800">
+                                          Message
+                                        </p>
+
+                                        <p className="mt-1 text-red-600">
+                                          {event.previousSnapshot.message}
+                                        </p>
+
+                                        <p className="my-1 text-xs text-gray-400">
+                                          changed to
+                                        </p>
+
+                                        <p className="text-green-600">
+                                          {event.snapshot.message}
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    {event.snapshot
+                                      .scheduledAt !==
+                                      event.previousSnapshot
+                                        .scheduledAt && (
+                                      <div>
+                                        <p className="font-semibold text-gray-800">
+                                          Scheduled time
+                                        </p>
+
+                                        <p className="mt-1 text-red-600">
+                                          {formatDateTime(
+                                            event.previousSnapshot
+                                              .scheduledAt,
+                                          )}
+                                        </p>
+
+                                        <p className="my-1 text-xs text-gray-400">
+                                          changed to
+                                        </p>
+
+                                        <p className="text-green-600">
+                                          {formatDateTime(
+                                            event.snapshot
+                                              .scheduledAt,
+                                          )}
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    {event.snapshot.channel !==
+                                      event.previousSnapshot
+                                        .channel && (
+                                      <div>
+                                        <p className="font-semibold text-gray-800">
+                                          Channel
+                                        </p>
+
+                                        <p className="mt-1 text-red-600">
+                                          {event.previousSnapshot.channel}
+                                        </p>
+
+                                        <p className="my-1 text-xs text-gray-400">
+                                          changed to
+                                        </p>
+
+                                        <p className="text-green-600">
+                                          {event.snapshot.channel}
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    {event.snapshot.title ===
+                                      event.previousSnapshot
+                                        .title &&
+                                      event.snapshot.message ===
+                                        event.previousSnapshot
+                                          .message &&
+                                      event.snapshot.scheduledAt ===
+                                        event.previousSnapshot
+                                          .scheduledAt &&
+                                      event.snapshot.channel ===
+                                        event.previousSnapshot
+                                          .channel && (
+                                        <p className="text-gray-500">
+                                          Notification updated
+                                          without changes to the
+                                          tracked fields.
+                                        </p>
+                                      )}
+                                  </div>
+                                )}
+
+                              {event.action === "DELETE" && (
+                                <div className="mt-4 text-sm">
+                                  <p className="font-semibold text-red-600">
+                                    Notification deleted.
+                                  </p>
+
+                                  {event.snapshot && (
+                                    <div className="mt-3 space-y-1 text-gray-700">
+                                      <p>
+                                        <strong>
+                                          Final title:
+                                        </strong>{" "}
+                                        {event.snapshot.title}
+                                      </p>
+
+                                      <p>
+                                        <strong>
+                                          Final message:
+                                        </strong>{" "}
+                                        {event.snapshot.message}
+                                      </p>
+
+                                      {event.snapshot
+                                        .scheduledAt && (
+                                        <p>
+                                          <strong>
+                                            Final scheduled time:
+                                          </strong>{" "}
+                                          {formatDateTime(
+                                            event.snapshot
+                                              .scheduledAt,
+                                          )}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {index <
+                              notification.history.length - 1 && (
+                              <div className="h-4" />
+                            )}
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
     </main>
   );
