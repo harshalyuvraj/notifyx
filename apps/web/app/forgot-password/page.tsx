@@ -1,14 +1,12 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import api from '@/lib/api';
-import toast from 'react-hot-toast';
+import Link from "next/link";
+import { useState } from "react";
+import api from "@/lib/api";
+import toast from "react-hot-toast";
 
 export default function ForgotPasswordPage() {
-  const router = useRouter();
-
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(
@@ -20,7 +18,7 @@ export default function ForgotPasswordPage() {
 
     try {
       const response = await api.post(
-        '/auth/forgot-password',
+        "/auth/forgot-password",
         {
           email,
         },
@@ -32,7 +30,7 @@ export default function ForgotPasswordPage() {
 
       // Keep the same generic message even on failure.
       toast.success(
-        'If an account exists for this email, a password reset link has been sent.',
+        "If an account exists for this email, a password reset link has been sent.",
       );
     } finally {
       setLoading(false);
@@ -40,48 +38,60 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-200 p-6">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-xl bg-white p-8 shadow"
-      >
-        <h1 className="text-3xl font-bold text-blue-600">
-          Forgot Password
-        </h1>
+    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-8">
+      <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-blue-600">
+            Forgot Password
+          </h1>
 
-        <p className="mt-2 text-gray-600">
-          Enter your email and we'll send you a reset link.
-        </p>
+          <p className="mt-2 text-sm text-gray-500">
+            Enter your email and we&apos;ll send you a
+            password reset link.
+          </p>
+        </div>
 
-        <label className="mt-6 block text-sm font-semibold">
-          Email
-        </label>
-
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="mt-2 w-full rounded border p-3"
-          placeholder="you@example.com"
-        />
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="mt-6 w-full rounded bg-blue-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5"
         >
-          {loading ? 'Sending...' : 'Send Reset Link'}
-        </button>
+          <div>
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Email
+            </label>
 
-        <button
-          type="button"
-          onClick={() => router.push('/login')}
-          className="mt-4 w-full rounded bg-gray-200 px-5 py-3 text-gray-700"
-        >
-          Back to Login
-        </button>
-      </form>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="you@example.com"
+              className="mt-1 w-full rounded-lg border border-gray-300 p-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg bg-blue-600 p-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? "Sending..." : "Send Reset Link"}
+          </button>
+
+          <Link
+            href="/login"
+            className="block w-full rounded-lg bg-gray-200 p-3 text-center font-medium text-gray-700 transition hover:bg-gray-300"
+          >
+            Back to Login
+          </Link>
+        </form>
+      </div>
     </main>
   );
 }

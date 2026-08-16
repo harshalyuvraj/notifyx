@@ -13,6 +13,10 @@ export default function ChangePasswordPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(
@@ -65,7 +69,7 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-slate-100 p-6">
+    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-8">
       <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-blue-600">
@@ -77,10 +81,8 @@ export default function ChangePasswordPage() {
           </p>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-5"
-        >
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Current password */}
           <div>
             <label
               htmlFor="currentPassword"
@@ -89,18 +91,42 @@ export default function ChangePasswordPage() {
               Current password
             </label>
 
-            <input
-              id="currentPassword"
-              type="password"
-              value={currentPassword}
-              onChange={(e) =>
-                setCurrentPassword(e.target.value)
-              }
-              required
-              className="mt-1 w-full rounded-lg border p-3"
-            />
+            <div className="relative mt-1">
+              <input
+                id="currentPassword"
+                name="currentPassword"
+                type={
+                  showCurrentPassword ? "text" : "password"
+                }
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(e) =>
+                  setCurrentPassword(e.target.value)
+                }
+                required
+                className="password-input w-full rounded-lg border border-gray-300 p-3 pr-16 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowCurrentPassword(
+                    (prev) => !prev,
+                  )
+                }
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500 hover:text-blue-600"
+                aria-label={
+                  showCurrentPassword
+                    ? "Hide current password"
+                    : "Show current password"
+                }
+              >
+                {showCurrentPassword ? "Hide" : "Show"}
+              </button>
+            </div>
           </div>
 
+          {/* New password */}
           <div>
             <label
               htmlFor="newPassword"
@@ -109,19 +135,39 @@ export default function ChangePasswordPage() {
               New password
             </label>
 
-            <input
-              id="newPassword"
-              type="password"
-              value={newPassword}
-              onChange={(e) =>
-                setNewPassword(e.target.value)
-              }
-              minLength={6}
-              required
-              className="mt-1 w-full rounded-lg border p-3"
-            />
+            <div className="relative mt-1">
+              <input
+                id="newPassword"
+                name="newPassword"
+                type={showNewPassword ? "text" : "password"}
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) =>
+                  setNewPassword(e.target.value)
+                }
+                minLength={6}
+                required
+                className="password-input w-full rounded-lg border border-gray-300 p-3 pr-16 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowNewPassword((prev) => !prev)
+                }
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500 hover:text-blue-600"
+                aria-label={
+                  showNewPassword
+                    ? "Hide new password"
+                    : "Show new password"
+                }
+              >
+                {showNewPassword ? "Hide" : "Show"}
+              </button>
+            </div>
           </div>
 
+          {/* Confirm password */}
           <div>
             <label
               htmlFor="confirmPassword"
@@ -130,23 +176,46 @@ export default function ChangePasswordPage() {
               Confirm new password
             </label>
 
-            <input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) =>
-                setConfirmPassword(e.target.value)
-              }
-              minLength={6}
-              required
-              className="mt-1 w-full rounded-lg border p-3"
-            />
+            <div className="relative mt-1">
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type={
+                  showConfirmPassword ? "text" : "password"
+                }
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) =>
+                  setConfirmPassword(e.target.value)
+                }
+                minLength={6}
+                required
+                className="password-input w-full rounded-lg border border-gray-300 p-3 pr-16 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowConfirmPassword(
+                    (prev) => !prev,
+                  )
+                }
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500 hover:text-blue-600"
+                aria-label={
+                  showConfirmPassword
+                    ? "Hide confirm password"
+                    : "Show confirm password"
+                }
+              >
+                {showConfirmPassword ? "Hide" : "Show"}
+              </button>
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-blue-600 p-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            className="w-full rounded-lg bg-blue-600 p-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading
               ? "Changing password..."
@@ -155,7 +224,7 @@ export default function ChangePasswordPage() {
 
           <Link
             href="/dashboard"
-            className="block w-full rounded-lg bg-gray-200 p-3 text-center text-gray-700 hover:bg-gray-300"
+            className="block w-full rounded-lg bg-gray-200 p-3 text-center text-gray-700 transition hover:bg-gray-300"
           >
             Back to Dashboard
           </Link>

@@ -1,18 +1,42 @@
 import { Injectable } from '@nestjs/common';
-import { Resend } from 'resend';
+import * as nodemailer from 'nodemailer';
+import type { Transporter } from 'nodemailer';
 
 @Injectable()
 export class EmailService {
-  private readonly resend: Resend;
+  private readonly transporter: Transporter;
+  private readonly from: string;
 
   constructor() {
-    const apiKey = process.env.RESEND_API_KEY;
+    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const port = Number(process.env.SMTP_PORT || 587);
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+    const from = process.env.SMTP_FROM || user;
 
-    if (!apiKey) {
-      throw new Error('RESEND_API_KEY is not configured');
+    if (!user) {
+      throw new Error('SMTP_USER is not configured');
     }
 
-    this.resend = new Resend(apiKey);
+    if (!pass) {
+      throw new Error('SMTP_PASS is not configured');
+    }
+
+    if (!from) {
+      throw new Error('SMTP_FROM is not configured');
+    }
+
+    this.from = from;
+
+    this.transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: {
+        user,
+        pass,
+      },
+    });
   }
 
   async sendNotification(
@@ -20,22 +44,11 @@ export class EmailService {
     title: string,
     message: string,
   ): Promise<void> {
-    const from = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-
-    const { data, error } = await this.resend.emails.send({
-      from,
+    await this.sendEmail({
       to,
       subject: title,
       html: this.buildNotificationHtml(title, message),
     });
-
-    if (error) {
-      throw new Error(`Resend email failed: ${JSON.stringify(error)}`);
-    }
-
-    console.log(
-      `Email accepted by Resend. Message ID: ${data?.id ?? 'unknown'}`,
-    );
   }
 
   async sendVerificationEmail(
@@ -43,26 +56,11 @@ export class EmailService {
     name: string,
     verificationUrl: string,
   ): Promise<void> {
-    const from = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-
-    const { data, error } = await this.resend.emails.send({
-      from,
+    await this.sendEmail({
       to,
       subject: 'Verify your NotifyX email address',
       html: this.buildVerificationHtml(name, verificationUrl),
     });
-
-    if (error) {
-      throw new Error(
-        `Resend verification email failed: ${JSON.stringify(error)}`,
-      );
-    }
-
-    console.log(
-      `Verification email accepted by Resend. Message ID: ${
-        data?.id ?? 'unknown'
-      }`,
-    );
   }
 
   async sendPasswordResetEmail(
@@ -70,26 +68,33 @@ export class EmailService {
     name: string,
     resetUrl: string,
   ): Promise<void> {
-    const from = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-
-    const { data, error } = await this.resend.emails.send({
-      from,
+    await this.sendEmail({
       to,
       subject: 'Reset your NotifyX password',
       html: this.buildPasswordResetHtml(name, resetUrl),
     });
+  }
 
-    if (error) {
-      throw new Error(
-        `Resend password reset email failed: ${JSON.stringify(error)}`,
+  private async sendEmail(params: {
+    to: string;
+    subject: string;
+    html: string;
+  }): Promise<void> {
+    try {
+      const info = await this.transporter.sendMail({
+        from: this.from,
+        to: params.to,
+        subject: params.subject,
+        html: params.html,
+      });
+
+      console.log(
+        `Email accepted by Gmail SMTP. Message ID: ${info.messageId}`,
       );
+    } catch (error) {
+      console.error('Gmail SMTP email failed:', error);
+      throw new Error('Email delivery failed.');
     }
-
-    console.log(
-      `Password reset email accepted by Resend. Message ID: ${
-        data?.id ?? 'unknown'
-      }`,
-    );
   }
 
   private escapeHtml(value: string): string {
@@ -103,7 +108,6 @@ export class EmailService {
 
   private buildNotificationHtml(title: string, message: string): string {
     const safeTitle = this.escapeHtml(title);
-
     const safeMessage = this.escapeHtml(message).replace(/\n/g, '<br />');
 
     return `
@@ -411,13 +415,12 @@ export class EmailService {
                 </p>
 
                 <p>
-                  This link expires in 30 minutes and can
-                  only be used once.
+                  This link expires in 30 minutes.
                 </p>
 
                 <p>
-                  If you didn't request a password reset,
-                  you can safely ignore this email.
+                  If you did not request a password reset, you
+                  can safely ignore this email.
                 </p>
 
                 <p>
