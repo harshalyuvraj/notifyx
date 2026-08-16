@@ -1,45 +1,45 @@
 import { Injectable } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
-import type { Transporter } from 'nodemailer';
-import dns from "node:dns";
-
-dns.setDefaultResultOrder("ipv4first");
+import { google } from 'googleapis';
 
 @Injectable()
 export class EmailService {
-  private readonly transporter: Transporter;
+  private readonly gmail;
   private readonly from: string;
 
   constructor() {
-    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-    const port = Number(process.env.SMTP_PORT || 587);
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
-    const from = process.env.SMTP_FROM || user;
+    const clientId = process.env.GMAIL_CLIENT_ID;
+    const clientSecret = process.env.GMAIL_CLIENT_SECRET;
+    const refreshToken = process.env.GMAIL_REFRESH_TOKEN;
+    const user = process.env.GMAIL_USER;
+
+    if (!clientId) {
+      throw new Error('GMAIL_CLIENT_ID is not configured');
+    }
+
+    if (!clientSecret) {
+      throw new Error('GMAIL_CLIENT_SECRET is not configured');
+    }
+
+    if (!refreshToken) {
+      throw new Error('GMAIL_REFRESH_TOKEN is not configured');
+    }
 
     if (!user) {
-      throw new Error('SMTP_USER is not configured');
+      throw new Error('GMAIL_USER is not configured');
     }
 
-    if (!pass) {
-      throw new Error('SMTP_PASS is not configured');
-    }
+    const auth = new google.auth.OAuth2(clientId, clientSecret);
 
-    if (!from) {
-      throw new Error('SMTP_FROM is not configured');
-    }
-
-    this.from = from;
-
-    this.transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      auth: {
-        user,
-        pass,
-      },
+    auth.setCredentials({
+      refresh_token: refreshToken,
     });
+
+    this.gmail = google.gmail({
+      version: 'v1',
+      auth,
+    });
+
+    this.from = user;
   }
 
   async sendNotification(
@@ -83,21 +83,45 @@ export class EmailService {
     subject: string;
     html: string;
   }): Promise<void> {
+    const message = [
+      `From: NotifyX <${this.from}>`,
+      `To: ${params.to}`,
+      `Subject: ${this.encodeHeader(params.subject)}`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/html; charset=UTF-8',
+      '',
+      params.html,
+    ].join('\r\n');
+
+    const raw = Buffer.from(message)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
     try {
-      const info = await this.transporter.sendMail({
-        from: this.from,
-        to: params.to,
-        subject: params.subject,
-        html: params.html,
+      const response = await this.gmail.users.messages.send({
+        userId: 'me',
+        requestBody: {
+          raw,
+        },
       });
 
-      console.log(
-        `Email accepted by Gmail SMTP. Message ID: ${info.messageId}`,
-      );
+      console.log(`Gmail API email sent. Message ID: ${response.data.id}`);
     } catch (error) {
-      console.error('Gmail SMTP email failed:', error);
+      console.error('Gmail API email failed:', error);
       throw new Error('Email delivery failed.');
     }
+  }
+
+  private encodeHeader(value: string): string {
+    const needsEncoding = /[^\x20-\x7E]/.test(value);
+
+    if (!needsEncoding) {
+      return value;
+    }
+
+    return `=?UTF-8?B?${Buffer.from(value, 'utf8').toString('base64')}?=`;
   }
 
   private escapeHtml(value: string): string {
