@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import api from "@/lib/api";
+import api, { getProfile } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,7 +28,13 @@ export default function LoginPage() {
 
       localStorage.setItem("token", res.data.access_token);
 
-      router.push("/dashboard");
+      const profile = await getProfile();
+
+      if (profile.role === "ADMIN") {
+        router.push("/dashboard/admin");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       setError(err.response?.data?.message ?? "Login failed");
     } finally {

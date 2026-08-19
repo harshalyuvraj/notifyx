@@ -60,6 +60,55 @@ export class UsersService {
     });
   }
 
+  async getAdminOverview() {
+    const totalUsers = await this.prisma.user.count();
+
+    const notifications = await this.prisma.notification.findMany({
+      select: {
+        status: true,
+      },
+    });
+
+    return {
+      totalUsers,
+      totalNotifications: notifications.length,
+      sent: notifications.filter((n) => n.status === 'SENT').length,
+      pending: notifications.filter((n) => n.status === 'PENDING').length,
+      failed: notifications.filter((n) => n.status === 'FAILED').length,
+    };
+  }
+
+  async getAdminStats() {
+    const users = await this.prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        notifications: {
+          select: {
+            status: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return users.map((user) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      total: user.notifications.length,
+      sent: user.notifications.filter((n) => n.status === 'SENT').length,
+      pending: user.notifications.filter((n) => n.status === 'PENDING').length,
+      failed: user.notifications.filter((n) => n.status === 'FAILED').length,
+    }));
+  }
+
   async findOne(id: string) {
     const user = await this.prisma.user.findUnique({
       where: {

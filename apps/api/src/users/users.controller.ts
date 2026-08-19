@@ -64,6 +64,32 @@ export class UsersController {
   }
 
   @ApiOperation({
+    summary: 'Admin overview statistics',
+    description: 'Returns platform-wide user and notification statistics.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Overview statistics returned successfully.',
+  })
+  @Get('admin/overview')
+  getAdminOverview() {
+    return this.usersService.getAdminOverview();
+  }
+
+  @ApiOperation({
+    summary: 'Admin user statistics',
+    description: 'Returns notification statistics for all users.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User statistics returned successfully.',
+  })
+  @Get('admin/stats')
+  getAdminStats() {
+    return this.usersService.getAdminStats();
+  }
+
+  @ApiOperation({
     summary: 'Get user by ID (Admin only)',
     description: 'Returns a single user without the password.',
   })
