@@ -1,111 +1,38 @@
 #################################################
-# 1. REGISTER A NEW USER (Run once)
+# NotifyX API Requests
+# Backend: http://localhost:3001
 #################################################
 
-POST http://localhost:3000/auth/register
+### Login
+POST http://localhost:3001/auth/login
 Content-Type: application/json
 
 {
-  "email": "your_email@gmail.com",
-  "password": "123456",
-  "name": "Harshal"
+  "email": "your_email@example.com",
+  "password": "your_password"
 }
 
 ###
 
-#################################################
-# 2. LOGIN (Run every time you need a new JWT)
-#################################################
-
-POST http://localhost:3000/auth/login
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "password": "pass"
-}
-
-# Copy the access_token from the response.
+### Get Profile
+GET http://localhost:3001/auth/profile
+Authorization: Bearer <PASTE_JWT_HERE>
 
 ###
 
-#################################################
-# 3. VIEW YOUR PROFILE
-#################################################
-
-GET http://localhost:3000/auth/profile
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbXJyMmJqa2MwMDAycm5iMGdhcjdqbmZsIiwiZW1haWwiOiJoYXJzaGFseXV2QGdtYWlsLmNvbSIsImlhdCI6MTc4NDQyMTU1NCwiZXhwIjoxNzg0NTA3OTU0fQ.nElXkKBVlyl2CvEh-hNVXD4K6eH9ABsMYb4lMVdrxwQ
+### Get My Notifications
+GET http://localhost:3001/notifications
+Authorization: Bearer <PASTE_JWT_HERE>
 
 ###
 
-#################################################
-# 4. CREATE AN IMMEDIATE NOTIFICATION
-#################################################
-
-POST http://localhost:3000/notifications
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbXJyMmJqa2MwMDAycm5iMGdhcjdqbmZsIiwiZW1haWwiOiJoYXJzaGFseXV2QGdtYWlsLmNvbSIsImlhdCI6MTc4NDQyMTU1NCwiZXhwIjoxNzg0NTA3OTU0fQ.nElXkKBVlyl2CvEh-hNVXD4K6eH9ABsMYb4lMVdrxwQ
+### Create Notification
+POST http://localhost:3001/notifications
+Authorization: Bearer <PASTE_JWT_HERE>
 Content-Type: application/json
 
 {
-  "title": "Interview Reminder",
-  "message": "Your Microsoft interview is tomorrow.",
+  "title": "Test Notification",
+  "message": "Hello from NotifyX",
   "channel": "EMAIL"
 }
-
-###
-
-#################################################
-# 5. CREATE A SCHEDULED NOTIFICATION
-#################################################
-
-POST http://localhost:3000/notifications
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbXJyMmJqa2MwMDAycm5iMGdhcjdqbmZsIiwiZW1haWwiOiJoYXJzaGFseXV2QGdtYWlsLmNvbSIsImlhdCI6MTc4NDQyMTU1NCwiZXhwIjoxNzg0NTA3OTU0fQ.nElXkKBVlyl2CvEh-hNVXD4K6eH9ABsMYb4lMVdrxwQ
-Content-Type: application/json
-
-{
-  "title": "Scheduled Email",
-  "message": "This email should be sent later.",
-  "channel": "EMAIL",
-  "scheduledAt": "2026-07-19T00:46:00.000Z"
-}
-
-###
-
-#################################################
-# 6. GET ALL MY NOTIFICATIONS
-#################################################
-
-GET http://localhost:3000/notifications
-Authorization: Bearer <PASTE_JWT_HERE>
-
-###
-
-#################################################
-# 7. GET ONE NOTIFICATION
-#################################################
-
-GET http://localhost:3000/notifications/<NOTIFICATION_ID>
-Authorization: Bearer <PASTE_JWT_HERE>
-
-###
-
-#################################################
-# 8. UPDATE A NOTIFICATION
-#################################################
-
-PATCH http://localhost:3000/notifications/<NOTIFICATION_ID>
-Authorization: Bearer <PASTE_JWT_HERE>
-Content-Type: application/json
-
-{
-  "status": "SENT"
-}
-
-###
-
-#################################################
-# 9. DELETE A NOTIFICATION
-#################################################
-
-DELETE http://localhost:3000/notifications/<NOTIFICATION_ID>
-Authorization: Bearer <PASTE_JWT_HERE>
